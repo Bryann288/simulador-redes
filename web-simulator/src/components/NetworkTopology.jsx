@@ -23,8 +23,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       type: "host",
       role: "Endpoint de Red",
       ip: cfg.ciscoPcIp,
-      x: 75,
-      y: 75
+      x: 75
     },
     {
       id: "sw1",
@@ -33,34 +32,31 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       sublabel: "DmOS Switch L2",
       type: "switch",
       vendor: "Datacom DmOS",
-      role: "Conmutación de Acceso",
-      ip: `VLAN ${cfg.ciscoVlan} (Untagged: 1/5, Tagged: 1/1)`,
-      x: 235,
-      y: 75
+      role: "Conmutación Acceso L2",
+      ip: `VLAN ${cfg.ciscoVlan} (PVID: 1/5)`,
+      x: 275
     },
     {
       id: "cisco",
       deviceKey: "cisco",
       label: "CISCO-860VAE",
-      sublabel: "Cisco IOS Router",
+      sublabel: "Router Cisco IOS",
       type: "router",
       vendor: "Cisco Systems (IOS 15.x)",
       role: "Gateway LAN 1 & Borde WAN",
-      ip: `LAN: ${cfg.ciscoLanGw} | WAN: ${cfg.wanCiscoIp}`,
-      x: 415,
-      y: 75
+      ip: `SVI: ${cfg.ciscoLanGw}`,
+      x: 500
     },
     {
       id: "teldat",
       deviceKey: "teldat",
       label: "TELDAT-RS123",
-      sublabel: "Teldat CIT Router",
+      sublabel: "Router Teldat CIT",
       type: "router",
       vendor: "Teldat (CIT Kernel)",
       role: "Borde WAN & Gateway LAN 2",
-      ip: `WAN: ${cfg.wanTeldatIp} | LAN: ${cfg.teldatLanGw}`,
-      x: 595,
-      y: 75
+      ip: `Subif: ${cfg.teldatLanGw}`,
+      x: 725
     },
     {
       id: "sw2",
@@ -69,10 +65,9 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       sublabel: "DmOS Switch L2",
       type: "switch",
       vendor: "Datacom DmOS",
-      role: "Conmutación de Acceso",
-      ip: `VLAN ${cfg.teldatVlan} (Untagged: 1/5, Tagged: 1/1)`,
-      x: 775,
-      y: 75
+      role: "Conmutación Acceso L2",
+      ip: `VLAN ${cfg.teldatVlan} (PVID: 1/5)`,
+      x: 935
     },
     {
       id: "pc2",
@@ -81,94 +76,144 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       type: "host",
       role: "Endpoint de Red",
       ip: cfg.teldatPcIp,
-      x: 935,
-      y: 75
+      x: 1105
     }
   ];
 
   const links = [
-    { from: 75, to: 235, label: `Eth 1/5 · Acceso VLAN ${cfg.ciscoVlan}`, sub: "1 Gbps Cat6" },
-    { from: 235, to: 415, label: `Troncal 802.1Q (Eth 1/1 ⮂ Fa0)`, sub: `Tagged VLAN ${cfg.ciscoVlan}` },
-    { from: 415, to: 595, label: `WAN Inter-Router (${cfg.wanNet}/30)`, sub: `${cfg.wanCiscoIp} ⮂ ${cfg.wanTeldatIp}`, isWan: true },
-    { from: 595, to: 775, label: `Subinterfaz 802.1Q (.${cfg.teldatVlan})`, sub: `Eth0/0.${cfg.teldatVlan} ⮂ Eth 1/1` },
-    { from: 775, to: 935, label: `Eth 1/5 · Acceso VLAN ${cfg.teldatVlan}`, sub: "1 Gbps Cat6" }
+    {
+      from: 75,
+      to: 275,
+      title: `Eth 1/5 (Acceso)`,
+      subtitle: `VLAN ${cfg.ciscoVlan} Untagged`,
+      isWan: false
+    },
+    {
+      from: 275,
+      to: 500,
+      title: "Troncal 802.1Q",
+      subtitle: `Eth 1/1 ⮂ Fa0 (VLAN ${cfg.ciscoVlan})`,
+      isWan: false
+    },
+    {
+      from: 500,
+      to: 725,
+      title: `Enlace WAN (${cfg.wanNet}/30)`,
+      subtitle: `${cfg.wanCiscoIp} ⮂ ${cfg.wanTeldatIp}`,
+      isWan: true
+    },
+    {
+      from: 725,
+      to: 935,
+      title: "Subinterfaz 802.1Q",
+      subtitle: `Eth0/0.${cfg.teldatVlan} ⮂ Eth 1/1`,
+      isWan: false
+    },
+    {
+      from: 935,
+      to: 1105,
+      title: `Eth 1/5 (Acceso)`,
+      subtitle: `VLAN ${cfg.teldatVlan} Untagged`,
+      isWan: false
+    }
   ];
 
   return (
-    <div className="bg-[#0b1120] border border-slate-800/80 rounded-xl p-4 shadow-xl select-none mb-4 font-sans">
-      <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-800/60">
+    <div className="bg-[#0b1120] border border-slate-800/90 rounded-xl p-3.5 shadow-xl select-none mb-3 font-sans">
+      {/* Header bar */}
+      <div className="flex items-center justify-between mb-1 pb-2 border-b border-slate-800/70">
         <div className="flex items-center gap-2.5">
           <div className="w-2 h-2 rounded-full bg-sky-500"></div>
-          <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider font-mono">
-            Diagrama de Topología L1-L3 (Interconexión de Infraestructura)
+          <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider font-mono">
+            Topología L1-L3 de Infraestructura de Red
           </span>
-          <span className="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-            RFC 1918 / 802.1Q
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+            Segmentación IEEE 802.1Q
           </span>
         </div>
-        <div className="flex items-center gap-4 text-[11px] text-slate-400 font-mono">
+        <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 bg-sky-500 inline-block"></span> Ethernet L2/L3
+            <span className="w-2.5 h-0.5 bg-sky-400 inline-block"></span> Ethernet
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-0.5 bg-amber-500 border-b border-dashed inline-block"></span> Enlace WAN /30
+            <span className="w-2.5 h-0.5 bg-amber-400 border-b border-dashed inline-block"></span> WAN Punto a Punto
           </span>
-          <span className="text-slate-500">|</span>
-          <span className="text-slate-400">Clic en un nodo para sincronizar consola</span>
+          <span className="text-slate-600">|</span>
+          <span className="text-slate-400 text-[10px]">Haz clic en un equipo para abrir su consola</span>
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto py-1">
-        <svg viewBox="0 0 1010 160" className="w-full min-w-[760px] h-38">
+      {/* Diagram SVG Container with clean non-overlapping layers */}
+      <div className="w-full overflow-x-auto">
+        <svg viewBox="0 0 1180 155" className="w-full min-w-[900px] h-36">
           <defs>
-            {/* Professional Gradients */}
             <linearGradient id="linkGradEth" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.7" />
-              <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.7" />
+              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#0284c7" stopOpacity="0.8" />
             </linearGradient>
             <linearGradient id="linkGradWan" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#d97706" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#b45309" stopOpacity="0.9" />
             </linearGradient>
           </defs>
 
-          {/* Links */}
+          {/* LAYER 1: Link Lines (Y = 62) */}
           {links.map((link, idx) => (
-            <g key={idx}>
+            <g key={`line-${idx}`}>
               <line
                 x1={link.from}
-                y1={60}
+                y1={62}
                 x2={link.to}
-                y2={60}
+                y2={62}
                 stroke={link.isWan ? "url(#linkGradWan)" : "url(#linkGradEth)"}
-                strokeWidth={link.isWan ? "2.5" : "2"}
-                strokeDasharray={link.isWan ? "5 4" : "none"}
+                strokeWidth={link.isWan ? "2.5" : "1.8"}
+                strokeDasharray={link.isWan ? "5 3" : "none"}
               />
-              <text
-                x={(link.from + link.to) / 2}
-                y={46}
-                textAnchor="middle"
-                fill="#cbd5e1"
-                fontSize="9.5"
-                fontFamily="JetBrains Mono, monospace"
-                fontWeight="500"
-              >
-                {link.label}
-              </text>
-              <text
-                x={(link.from + link.to) / 2}
-                y={74}
-                textAnchor="middle"
-                fill="#64748b"
-                fontSize="8.5"
-                fontFamily="JetBrains Mono, monospace"
-              >
-                {link.sub}
-              </text>
             </g>
           ))}
 
-          {/* Nodes */}
+          {/* LAYER 2: Link Labels (STRICTLY ABOVE THE LINE: Y = 18 to 44) */}
+          {links.map((link, idx) => {
+            const midX = (link.from + link.to) / 2;
+            return (
+              <g key={`label-${idx}`}>
+                {/* Background pill to prevent any line interference */}
+                <rect
+                  x={midX - 70}
+                  y={18}
+                  width={140}
+                  height={27}
+                  rx={4}
+                  fill="#080e1a"
+                  stroke={link.isWan ? "#78350f" : "#1e293b"}
+                  strokeWidth="0.8"
+                />
+                <text
+                  x={midX}
+                  y={30}
+                  textAnchor="middle"
+                  fill={link.isWan ? "#fbbf24" : "#e2e8f0"}
+                  fontSize="9"
+                  fontFamily="JetBrains Mono, monospace"
+                  fontWeight="600"
+                >
+                  {link.title}
+                </text>
+                <text
+                  x={midX}
+                  y={41}
+                  textAnchor="middle"
+                  fill="#94a3b8"
+                  fontSize="8"
+                  fontFamily="JetBrains Mono, monospace"
+                >
+                  {link.subtitle}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* LAYER 3: Device Nodes & Labels (CENTER Y = 62, LABELS STRICTLY BELOW Y = 94 to 142) */}
           {nodes.map((node) => {
             const isCurrentDevice = node.deviceKey && activeDevice === node.deviceKey;
             const isClickable = Boolean(node.deviceKey);
@@ -176,7 +221,6 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
             return (
               <g
                 key={node.id}
-                transform={`translate(${node.x}, 60)`}
                 className={isClickable ? "cursor-pointer group" : ""}
                 onClick={() => {
                   setSelectedNode(node);
@@ -185,62 +229,59 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
                   }
                 }}
               >
-                {/* Node Outer Ring & Fill */}
+                {/* Node Circle at (node.x, 62) */}
                 <circle
-                  r={isCurrentDevice ? "26" : "22"}
+                  cx={node.x}
+                  cy={62}
+                  r={isCurrentDevice ? "24" : "20"}
                   fill={isCurrentDevice ? "#172554" : "#0f172a"}
                   stroke={isCurrentDevice ? "#38bdf8" : "#334155"}
                   strokeWidth={isCurrentDevice ? "2" : "1.2"}
                   className="transition-all duration-150 group-hover:stroke-sky-400"
                 />
 
-                {/* Technical Vector Network Symbols */}
+                {/* Technical Vector Symbol inside Node */}
                 {node.type === "router" && (
-                  <g stroke={isCurrentDevice ? "#60a5fa" : "#94a3b8"} strokeWidth="1.5" fill="none">
-                    {/* Circle base */}
-                    <circle r="12" />
-                    {/* Routing Arrows (inward and outward) */}
-                    <path d="M -7 -4 L 0 -4 L -2 -7" />
-                    <path d="M 7 4 L 0 4 L 2 7" />
-                    <path d="M -4 7 L -4 0 L -7 2" />
-                    <path d="M 4 -7 L 4 0 L 7 -2" />
+                  <g transform={`translate(${node.x}, 62)`} stroke={isCurrentDevice ? "#38bdf8" : "#94a3b8"} strokeWidth="1.4" fill="none">
+                    <circle r="11" />
+                    <path d="M -6 -3.5 L 0 -3.5 L -1.5 -6" />
+                    <path d="M 6 3.5 L 0 3.5 L 1.5 6" />
+                    <path d="M -3.5 6 L -3.5 0 L -6 1.5" />
+                    <path d="M 3.5 -6 L 3.5 0 L 6 -1.5" />
                   </g>
                 )}
 
                 {node.type === "switch" && (
-                  <g stroke={isCurrentDevice ? "#60a5fa" : "#94a3b8"} strokeWidth="1.4" fill="none">
-                    {/* Rect chassis */}
-                    <rect x="-12" y="-9" width="24" height="18" rx="2" />
-                    {/* Opposing horizontal switching arrows */}
-                    <path d="M -7 -3 L 6 -3 M 3 -6 L 7 -3 L 3 0" />
-                    <path d="M 7 3 L -6 3 M -3 0 L -7 3 L -3 6" />
+                  <g transform={`translate(${node.x}, 62)`} stroke={isCurrentDevice ? "#38bdf8" : "#94a3b8"} strokeWidth="1.3" fill="none">
+                    <rect x="-11" y="-8" width="22" height="16" rx="2" />
+                    <path d="M -6 -2.5 L 5 -2.5 M 2 -5 L 5 -2.5 L 2 0" />
+                    <path d="M 6 2.5 L -5 2.5 M -2 0 L -5 2.5 L -2 5" />
                   </g>
                 )}
 
                 {node.type === "host" && (
-                  <g stroke="#94a3b8" strokeWidth="1.3" fill="none">
-                    {/* Monitor frame */}
-                    <rect x="-11" y="-9" width="22" height="14" rx="1.5" />
-                    {/* Stand base */}
-                    <path d="M 0 5 L 0 9 M -6 9 L 6 9" />
+                  <g transform={`translate(${node.x}, 62)`} stroke="#94a3b8" strokeWidth="1.3" fill="none">
+                    <rect x="-10" y="-8" width="20" height="13" rx="1.5" />
+                    <path d="M 0 5 L 0 8 M -5 8 L 5 8" />
                   </g>
                 )}
 
-                {/* Node Identifier */}
+                {/* Node Labels (STRICTLY BELOW: Y = 96, 110, 124) */}
                 <text
-                  y={38}
+                  x={node.x}
+                  y={96}
                   textAnchor="middle"
-                  fill={isCurrentDevice ? "#38bdf8" : "#f1f5f9"}
-                  fontSize="11"
+                  fill={isCurrentDevice ? "#38bdf8" : "#f8fafc"}
+                  fontSize="10.5"
                   fontWeight="600"
                   fontFamily="Inter, sans-serif"
                 >
                   {node.label}
                 </text>
 
-                {/* Subtitle / Model */}
                 <text
-                  y={49}
+                  x={node.x}
+                  y={110}
                   textAnchor="middle"
                   fill="#94a3b8"
                   fontSize="8.5"
@@ -249,15 +290,15 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
                   {node.sublabel}
                 </text>
 
-                {/* IP / Segment Callout */}
                 <text
-                  y={61}
+                  x={node.x}
+                  y={124}
                   textAnchor="middle"
                   fill="#64748b"
                   fontSize="8"
                   fontFamily="JetBrains Mono, monospace"
                 >
-                  {node.ip.length > 24 ? node.ip.substring(0, 24) + "..." : node.ip}
+                  {node.ip}
                 </text>
               </g>
             );
@@ -265,17 +306,18 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
         </svg>
       </div>
 
+      {/* Selected Node Details Bar */}
       {selectedNode && (
-        <div className="mt-2.5 text-xs bg-[#090d16] p-3 rounded-lg border border-slate-800 flex items-center justify-between text-slate-300">
+        <div className="mt-2 text-xs bg-[#070b14] px-3 py-2 rounded-lg border border-slate-800 flex items-center justify-between text-slate-300">
           <div className="flex items-center gap-3">
             <span className="px-2 py-0.5 rounded bg-sky-950 text-sky-400 font-mono text-[11px] font-semibold border border-sky-800/60">
               {selectedNode.label}
             </span>
-            <span className="text-slate-300 font-medium">{selectedNode.role}</span>
-            <span className="text-slate-500 font-mono text-[11px]">• {selectedNode.vendor || "Host IP"} ({selectedNode.ip})</span>
+            <span className="text-slate-200 font-medium">{selectedNode.role}</span>
+            <span className="text-slate-500 font-mono text-[11px]">| {selectedNode.vendor || "Estación de trabajo"} ({selectedNode.ip})</span>
           </div>
           <span className="text-[11px] text-slate-400 font-mono">
-            {selectedNode.deviceKey ? "Sincronizado con consola de pruebas" : "Host de prueba final"}
+            {selectedNode.deviceKey ? "Consola vinculada activamente" : "Host de prueba final"}
           </span>
         </div>
       )}
