@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "record": "node grabar-demo.js"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -20,9 +21,9 @@
     "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.6.1",
     "oxlint": "^1.81.0",
+    "playwright": "^1.63.0",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.0"
   }
 }
-
