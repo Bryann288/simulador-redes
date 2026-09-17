@@ -30,6 +30,9 @@ export function normalizeCommand(cmdStr) {
   cmd = cmd.replace(/^wr$/, "write memory");
   cmd = cmd.replace(/^wr\s+mem$/, "write memory");
   cmd = cmd.replace(/^copy\s+run\s+start$/, "copy running-config startup-config");
+  cmd = cmd.replace(/^do\s+wr$/, "do write memory");
+  cmd = cmd.replace(/^do\s+wr\s+mem$/, "do write memory");
+  cmd = cmd.replace(/^do\s+copy\s+run\s+start$/, "do copy running-config startup-config");
 
   // Teldat CIT abbreviations
   cmd = cmd.replace(/^\*\s*p\s*4$/, "* p 4");
@@ -43,8 +46,9 @@ export function normalizeCommand(cmdStr) {
   cmd = cmd.replace(/^net\s+eth0\/1$/, "network ethernet0/1");
   cmd = cmd.replace(/^net\s+ethernet0\/1$/, "network ethernet0/1");
   cmd = cmd.replace(/^net\s+ethernet0\/0\.(\d+)$/, "network ethernet0/0.$1");
-  cmd = cmd.replace(/^net\s+eth0\/0\.(\d+)$/, "network ethernet0/0.$1");
   cmd = cmd.replace(/^prot\s+ip$/, "protocol ip");
+  cmd = cmd.replace(/^dump\s+ro$/, "dump-routing-table");
+  cmd = cmd.replace(/^stat\s+ro$/, "static-routes");
 
   return cmd;
 }
@@ -84,6 +88,17 @@ export class SimulatorEngine {
     const validNormalized = (step.valid_commands || []).map(v => normalizeCommand(v));
     const validRaw = (step.valid_commands || []).map(v => v.toLowerCase().trim());
 
+    // Special Cisco IOS realism: Attempting 'write memory' directly in config mode without 'do'
+    const isConfigPrompt = (step.prompt || "").includes("(config");
+    const isSavingAttempt = rawCmd === "wr" || rawCmd === "write memory" || rawCmd === "wr mem" || rawCmd === "copy run start";
+    if (isConfigPrompt && isSavingAttempt && !validRaw.includes(rawCmd) && !validNormalized.includes(normalizedCmd)) {
+      this.history.push({ cmd, success: false });
+      return {
+        success: false,
+        output: "% Invalid input detected at '^' marker.\n(En modo de configuración debes usar 'do write memory' o regresar con 'end' a modo '#')."
+      };
+    }
+
     const hasBannerStep = validRaw.some(v => v.startsWith("banner") || v.startsWith("welcome-message"));
     const isBannerMatch = hasBannerStep && (rawCmd.startsWith("banner") || rawCmd.startsWith("welcome-message"));
 
@@ -95,11 +110,27 @@ export class SimulatorEngine {
 
     if (isMatch) {
       this.history.push({ cmd, success: true });
-      this.currentStep++;
+
+      const isDoSave = rawCmd.startsWith("do wr") || rawCmd.startsWith("do write memory") || rawCmd.startsWith("do copy run start") || normalizedCmd.startsWith("do write memory") || normalizedCmd.startsWith("do copy running-config startup-config");
+      const nextStep = this.challenge.steps[this.currentStep + 1];
+      const nextStepIsSave = nextStep && (nextStep.valid_commands || []).some(v => v.toLowerCase().includes("write memory") || v.toLowerCase().includes("wr"));
+
+      let output = "";
+      if (isDoSave && nextStepIsSave) {
+        // Smart skip: 'do write memory' fulfilled the save directly from config mode!
+        this.currentStep += 2;
+        output = "Building configuration...\n[OK]\n% Configuración guardada en NVRAM mediante comando 'do'.";
+      } else {
+        if (rawCmd === "write memory" || rawCmd === "wr" || isDoSave) {
+          output = "Building configuration...\n[OK]";
+        }
+        this.currentStep++;
+      }
+
       if (this.currentStep >= this.challenge.steps.length) {
         this.isCompleted = true;
       }
-      return { success: true, output: "" };
+      return { success: true, output };
     } else {
       this.history.push({ cmd, success: false });
       return { 

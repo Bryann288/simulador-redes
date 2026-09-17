@@ -43,9 +43,30 @@
         },
         {
           "prompt": "CISCO_AS100(config)#",
-          "valid_commands": ["end", "wr", "write memory", "copy run start", "copy running-config startup-config"],
-          "hint": "Guarda la configuración en NVRAM con 'write memory' o 'wr'.",
-          "explanation": "'write memory' guarda los cambios en la NVRAM para que persistan tras un reinicio."
+          "valid_commands": [
+            "end",
+            "exit",
+            "ctrl+z",
+            "do write memory",
+            "do wr",
+            "do wr mem",
+            "do copy run start",
+            "do copy running-config startup-config"
+          ],
+          "hint": "Para guardar en NVRAM: Opción 1: sal con 'end' a modo '#'. Opción 2 (truco directo): 'do write memory' (o 'do wr').",
+          "explanation": "En Cisco IOS, 'write memory' pertenece al modo privilegiado '#'. Estando en '(config)#', debes salir con 'end' o anteponer 'do' ('do wr') para guardar sin salir."
+        },
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": [
+            "write memory",
+            "wr",
+            "wr mem",
+            "copy run start",
+            "copy running-config startup-config"
+          ],
+          "hint": "Estando en modo privilegiado '#', guarda con 'write memory' o 'wr'.",
+          "explanation": "'write memory' copia la configuración activa (running-config) a la memoria NVRAM (startup-config) para persistir tras un reinicio."
         }
       ]
     },

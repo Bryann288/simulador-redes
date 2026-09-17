@@ -152,13 +152,29 @@ export class SandboxEngine {
       if (norm.startsWith("ping")) {
         return { success: true, output: "Type escape sequence to abort.\nSending 5, 100-byte ICMP Echos to target, timeout is 2 seconds:\n!!!!!\nSuccess rate is 100 percent (5/5), round-trip min/avg/max = 1/2/4 ms" };
       }
-      if (norm === "write memory" || norm === "copy running-config startup-config") {
+      if (norm === "write memory" || norm === "copy running-config startup-config" || norm === "wr" || norm === "wr mem" || norm === "copy run start") {
         this.state.saved = true;
         return { success: true, output: "Building configuration...\n[OK]" };
       }
     }
 
     if (mode === "config") {
+      if (norm.startsWith("do ")) {
+        const sub = norm.slice(3).trim();
+        if (sub === "write memory" || sub === "wr" || sub === "copy running-config startup-config" || sub === "copy run start" || sub === "wr mem") {
+          this.state.saved = true;
+          return { success: true, output: "Building configuration...\n[OK]\n% Configuración guardada en NVRAM mediante 'do write memory'." };
+        }
+        if (sub.startsWith("show")) {
+          return { success: true, output: "% Executed privileged command via 'do'." };
+        }
+      }
+      if (norm === "write memory" || norm === "wr" || norm === "copy run start" || norm === "copy running-config startup-config") {
+        return {
+          success: false,
+          output: "% Invalid input detected at '^' marker.\n(Nota Cisco IOS: 'write memory' solo es válido en Modo Privilegiado '#'. Usa 'do write memory' o sal primero con 'end')."
+        };
+      }
       if (norm === "exit" || norm === "end") {
         this.mode = "priv_exec";
         return { success: true, output: "" };
@@ -207,6 +223,22 @@ export class SandboxEngine {
     }
 
     if (mode === "config_if") {
+      if (norm.startsWith("do ")) {
+        const sub = norm.slice(3).trim();
+        if (sub === "write memory" || sub === "wr" || sub === "copy running-config startup-config" || sub === "copy run start" || sub === "wr mem") {
+          this.state.saved = true;
+          return { success: true, output: "Building configuration...\n[OK]\n% Configuración guardada en NVRAM mediante 'do write memory'." };
+        }
+        if (sub.startsWith("show")) {
+          return { success: true, output: "% Executed privileged command via 'do'." };
+        }
+      }
+      if (norm === "write memory" || norm === "wr" || norm === "copy run start" || norm === "copy running-config startup-config") {
+        return {
+          success: false,
+          output: "% Invalid input detected at '^' marker.\n(Nota Cisco IOS: 'write memory' solo es válido en Modo Privilegiado '#'. Usa 'do write memory' o sal primero con 'end')."
+        };
+      }
       if (norm === "exit") {
         this.mode = "config";
         this.activeInterface = null;

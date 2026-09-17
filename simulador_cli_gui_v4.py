@@ -52,6 +52,9 @@ def normalizar_comando(cmd_str):
     cmd = re.sub(r'^wr$', 'write memory', cmd)
     cmd = re.sub(r'^wr\s+mem$', 'write memory', cmd)
     cmd = re.sub(r'^copy\s+run\s+start$', 'copy running-config startup-config', cmd)
+    cmd = re.sub(r'^do\s+wr$', 'do write memory', cmd)
+    cmd = re.sub(r'^do\s+wr\s+mem$', 'do write memory', cmd)
+    cmd = re.sub(r'^do\s+copy\s+run\s+start$', 'do copy running-config startup-config', cmd)
     
     # Teldat CIT
     cmd = re.sub(r'^\*\s*p\s*4$', '* p 4', cmd)
@@ -85,8 +88,8 @@ RETOS_POR_MODULO = {
                 {"prompt": "CISCO#", "cmd": ["configure terminal", "conf t"], "pista": "Entra a configuración global con 'configure terminal'.", "explicacion": "'configure terminal' modifica la memoria RAM activa."},
                 {"prompt": "CISCO(config)#", "cmd": ["hostname CISCO_AS100", "host CISCO_AS100"], "pista": "Personaliza el nombre con 'hostname CISCO_AS100'.", "explicacion": "Identifica al equipo en los registros de auditoría de red."},
                 {"prompt": "CISCO_AS100(config)#", "cmd": ["enable secret cisco123"], "pista": "Protege el acceso privilegiado con 'enable secret cisco123'.", "explicacion": "'enable secret' encripta la clave con hash MD5 en la configuración."},
-                {"prompt": "CISCO_AS100(config)#", "cmd": ["banner motd #ACCESO RESTRINGIDO - PERSONAL AUTORIZADO#", "banner motd #ACCESO RESTRINGIDO#"], "pista": "Configura el banner legal: banner motd #ACCESO RESTRINGIDO - PERSONAL AUTORIZADO#", "explicacion": "El 'banner motd' despliega la advertencia legal de acceso restringido previa al login."},
-                {"prompt": "CISCO_AS100(config)#", "cmd": ["end", "wr", "write memory"], "pista": "Guarda la configuración en NVRAM con 'write memory' o 'wr'.", "explicacion": "'write memory' copia running-config a startup-config."}
+                {"prompt": "CISCO_AS100(config)#", "cmd": ["end", "exit", "ctrl+z", "do write memory", "do wr", "do copy run start"], "pista": "Para guardar: Opción 1: sal con 'end' a modo '#'. Opción 2 (directo): 'do write memory' (o 'do wr').", "explicacion": "En Cisco IOS, 'write memory' pertenece a '#'. Desde '(config)#' sal con 'end' o usa 'do write memory'."},
+                {"prompt": "CISCO_AS100#", "cmd": ["write memory", "wr", "copy run start"], "pista": "Estando en modo privilegiado '#', guarda con 'write memory' o 'wr'.", "explicacion": "'write memory' copia running-config a la memoria NVRAM (startup-config)."}
             ]
         },
         {
@@ -350,12 +353,28 @@ class NetworkCLISimulatorGUI:
         cmd_norm = normalizar_comando(cmd)
         validos_norm = [normalizar_comando(v) for v in paso["cmd"]]
 
+        # Validacion realista Cisco: comando wr directo en modo config
+        if "(config" in prompt_actual and cmd_norm in ["write memory", "wr", "copy running-config startup-config"]:
+            self._escribir_terminal(" % Invalid input detected at '^' marker.\n 💡 (Nota técnica Cisco IOS: 'write memory' solo es válido en Modo Privilegiado '#'. Estando en config debes usar 'do write memory' o salir primero con 'end')\n", "error")
+            return
+
         has_banner = any(v.startswith("banner") or v.startswith("welcome-message") for v in paso["cmd"])
         is_banner_match = has_banner and (cmd_norm.startswith("banner") or cmd_norm.startswith("welcome-message"))
 
         if cmd_norm in validos_norm or is_banner_match:
             self._escribir_terminal(" [OK - Comando Aceptado]\n", "success")
-            self.paso_idx += 1
+            
+            # Si el alumno guardó directamente con 'do write memory' en config, saltar el paso redundante de exec
+            is_do_save = cmd_norm.startswith("do write memory") or cmd_norm.startswith("do copy")
+            has_next = self.paso_idx + 1 < len(reto["pasos"])
+            next_is_save = has_next and any("write memory" in v for v in reto["pasos"][self.paso_idx + 1]["cmd"])
+            
+            if is_do_save and next_is_save:
+                self._escribir_terminal(" Building configuration...\n [OK] - NVRAM actualizada directamente via 'do'.\n", "success")
+                self.paso_idx += 2
+            else:
+                self.paso_idx += 1
+                
             self._actualizar_paso()
         else:
             self._escribir_terminal(" % Unknown command or wrong CLI mode\n", "error")
