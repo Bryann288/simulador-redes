@@ -135,12 +135,16 @@ export function App() {
           <button
             onClick={() => setIsExamModalOpen(true)}
             className="px-3 py-1.5 rounded bg-[#070b14] hover:bg-slate-800 text-slate-300 border border-slate-700/90 text-xs font-semibold transition cursor-pointer flex items-center gap-2 shadow-sm"
-            title="Ajustar direcciones IP y subredes para el examen o práctica"
+            title="Ajustar esquema de VLANs, segmentación y direccionamiento IP"
           >
-            <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+            <span className={`w-2 h-2 rounded-full ${networkConfig.ciscoVlan === 1 ? "bg-amber-400" : "bg-sky-400"}`}></span>
             <span>Parámetros de Red</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
-              {networkConfig.ciscoLanNet}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+              networkConfig.ciscoVlan === 1
+                ? "bg-amber-950/60 text-amber-300 border border-amber-800/80"
+                : "bg-slate-800 text-slate-300"
+            }`}>
+              {networkConfig.ciscoVlan === 1 ? "VLAN 1 (Plana)" : `VLAN ${networkConfig.ciscoVlan} (802.1Q)`}
             </span>
           </button>
 

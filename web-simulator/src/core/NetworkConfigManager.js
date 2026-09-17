@@ -4,7 +4,7 @@ export const PRESET_PROFILES = [
   {
     id: "default",
     name: "Estándar de Laboratorio (192.168.x.x)",
-    description: "LAN Cisco 192.168.100.0/24 · LAN Teldat 192.168.200.0/24 · WAN 10.0.12.0/30",
+    description: "Segmentación 802.1Q (VLAN 100/200) · LAN Cisco 192.168.100.0/24 · LAN Teldat 192.168.200.0/24 · WAN 10.0.12.0/30",
     config: {
       ciscoVlan: 100,
       teldatVlan: 200,
@@ -16,6 +16,27 @@ export const PRESET_PROFILES = [
       teldatLanMask: "255.255.255.0",
       teldatLanGw: "192.168.200.1",
       teldatPcIp: "192.168.200.10",
+      wanNet: "10.0.12.0",
+      wanMask: "255.255.255.252",
+      wanCiscoIp: "10.0.12.1",
+      wanTeldatIp: "10.0.12.2"
+    }
+  },
+  {
+    id: "flat_vlan1",
+    name: "Red Plana / VLAN 1 Nativa (Sin 802.1Q)",
+    description: "VLAN 1 nativa por defecto · Sin subinterfaces ni troncales · LAN Cisco 192.168.1.0/24 · LAN Teldat 192.168.2.0/24 · WAN 10.0.12.0/30",
+    config: {
+      ciscoVlan: 1,
+      teldatVlan: 1,
+      ciscoLanNet: "192.168.1.0",
+      ciscoLanMask: "255.255.255.0",
+      ciscoLanGw: "192.168.1.1",
+      ciscoPcIp: "192.168.1.10",
+      teldatLanNet: "192.168.2.0",
+      teldatLanMask: "255.255.255.0",
+      teldatLanGw: "192.168.2.1",
+      teldatPcIp: "192.168.2.10",
       wanNet: "10.0.12.0",
       wanMask: "255.255.255.252",
       wanCiscoIp: "10.0.12.1",
@@ -182,16 +203,53 @@ export function applyNetworkConfigToChallenge(challenge, netConfig) {
     return res;
   };
 
+  const isFlatMode = netConfig.ciscoVlan === 1;
+
+  let adaptedTitle = replaceText(challenge.title);
+  let adaptedDesc = replaceText(challenge.description);
+
+  if (isFlatMode) {
+    if (challenge.id === "D1") {
+      adaptedTitle = "D1: Identificación, Banner Legal y Puerto en VLAN 1 Nativa (Host PC/Laptop)";
+      adaptedDesc = "Configura el switch Datacom, asigna el hostname y banner legal MOTD, confirma el puerto ethernet 1/5 en la VLAN 1 nativa untagged por defecto hacia la estación PC1/Laptop.";
+    } else if (challenge.id === "C2") {
+      adaptedTitle = "C2: Capa 2/3 LAN en Red Plana (SVI Vlan1 Nativa y Puertos Físicos)";
+    } else if (challenge.id === "T2") {
+      adaptedTitle = "T2: Interfaz WAN Punto a Punto, Red Plana LAN (VLAN 1) y Persistencia";
+    }
+  }
+
   return {
     ...challenge,
-    title: replaceText(challenge.title),
-    description: replaceText(challenge.description),
-    steps: (challenge.steps || []).map(step => ({
-      ...step,
-      prompt: replaceText(step.prompt),
-      hint: replaceText(step.hint),
-      explanation: replaceText(step.explanation),
-      valid_commands: (step.valid_commands || []).map(cmd => replaceText(cmd))
-    }))
+    title: adaptedTitle,
+    description: adaptedDesc,
+    steps: (challenge.steps || []).map(step => {
+      const replacedValid = (step.valid_commands || []).map(cmd => replaceText(cmd));
+      
+      // Adapt commands for flat mode
+      if (isFlatMode) {
+        if (replacedValid.some(v => v.toLowerCase().includes("vlan 1"))) {
+          if (!replacedValid.includes("interface vlan 1")) replacedValid.push("interface vlan 1");
+          if (!replacedValid.includes("int vlan 1")) replacedValid.push("int vlan 1");
+        }
+        if (replacedValid.some(v => v.toLowerCase().includes("no set-member ethernet 1/5"))) {
+          replacedValid.push("set-member untagged ethernet 1/5", "exit");
+        }
+        if (replacedValid.some(v => v.toLowerCase().includes("add device eth-subinterface ethernet0/0 1"))) {
+          replacedValid.push("network ethernet0/0", "net eth0/0");
+        }
+        if (replacedValid.some(v => v.toLowerCase().includes("network ethernet0/0.1"))) {
+          replacedValid.push("network ethernet0/0", "net eth0/0");
+        }
+      }
+
+      return {
+        ...step,
+        prompt: replaceText(step.prompt),
+        hint: replaceText(step.hint),
+        explanation: replaceText(step.explanation),
+        valid_commands: replacedValid
+      };
+    })
   };
 }

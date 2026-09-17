@@ -15,6 +15,8 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
     wanTeldatIp: "10.0.12.2"
   };
 
+  const isFlat = cfg.ciscoVlan === 1 && cfg.teldatVlan === 1;
+
   const nodes = [
     {
       id: "pc1",
@@ -33,7 +35,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       type: "switch",
       vendor: "Datacom DmOS",
       role: "Conmutación Acceso L2",
-      ip: `VLAN ${cfg.ciscoVlan} (PVID: 1/5)`,
+      ip: isFlat ? "VLAN 1 Nativa (PVID: 1/5)" : `VLAN ${cfg.ciscoVlan} (PVID: 1/5)`,
       x: 275
     },
     {
@@ -44,7 +46,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       type: "router",
       vendor: "Cisco Systems (IOS 15.x)",
       role: "Gateway LAN 1 & Borde WAN",
-      ip: `SVI: ${cfg.ciscoLanGw}`,
+      ip: isFlat ? `SVI Vlan1: ${cfg.ciscoLanGw}` : `SVI Vlan${cfg.ciscoVlan}: ${cfg.ciscoLanGw}`,
       x: 500
     },
     {
@@ -55,7 +57,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       type: "router",
       vendor: "Teldat (CIT Kernel)",
       role: "Borde WAN & Gateway LAN 2",
-      ip: `Subif: ${cfg.teldatLanGw}`,
+      ip: isFlat ? `Eth0/0: ${cfg.teldatLanGw}` : `Subif 802.1Q: ${cfg.teldatLanGw}`,
       x: 725
     },
     {
@@ -66,7 +68,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       type: "switch",
       vendor: "Datacom DmOS",
       role: "Conmutación Acceso L2",
-      ip: `VLAN ${cfg.teldatVlan} (PVID: 1/5)`,
+      ip: isFlat ? "VLAN 1 Nativa (PVID: 1/5)" : `VLAN ${cfg.teldatVlan} (PVID: 1/5)`,
       x: 935
     },
     {
@@ -85,14 +87,14 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       from: 75,
       to: 275,
       title: `Eth 1/5 (Acceso)`,
-      subtitle: `VLAN ${cfg.ciscoVlan} Untagged`,
+      subtitle: isFlat ? "VLAN 1 Nativa (Untagged)" : `VLAN ${cfg.ciscoVlan} Untagged`,
       isWan: false
     },
     {
       from: 275,
       to: 500,
-      title: "Troncal 802.1Q",
-      subtitle: `Eth 1/1 ⮂ Fa0 (VLAN ${cfg.ciscoVlan})`,
+      title: isFlat ? "Acceso VLAN 1 Nativa" : "Troncal 802.1Q",
+      subtitle: isFlat ? "Eth 1/1 ⮂ Fa0 (Sin etiquetar)" : `Eth 1/1 ⮂ Fa0 (VLAN ${cfg.ciscoVlan})`,
       isWan: false
     },
     {
@@ -105,15 +107,15 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
     {
       from: 725,
       to: 935,
-      title: "Subinterfaz 802.1Q",
-      subtitle: `Eth0/0.${cfg.teldatVlan} ⮂ Eth 1/1`,
+      title: isFlat ? "Acceso VLAN 1 Nativa" : "Subinterfaz 802.1Q",
+      subtitle: isFlat ? "Eth0/0 ⮂ Eth 1/1 (Sin etiquetar)" : `Eth0/0.${cfg.teldatVlan} ⮂ Eth 1/1`,
       isWan: false
     },
     {
       from: 935,
       to: 1105,
       title: `Eth 1/5 (Acceso)`,
-      subtitle: `VLAN ${cfg.teldatVlan} Untagged`,
+      subtitle: isFlat ? "VLAN 1 Nativa (Untagged)" : `VLAN ${cfg.teldatVlan} Untagged`,
       isWan: false
     }
   ];
@@ -123,12 +125,16 @@ export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig })
       {/* Header bar */}
       <div className="flex items-center justify-between mb-1 pb-2 border-b border-slate-800/70">
         <div className="flex items-center gap-2.5">
-          <div className="w-2 h-2 rounded-full bg-sky-500"></div>
+          <div className={`w-2 h-2 rounded-full ${isFlat ? "bg-amber-400" : "bg-sky-500"}`}></div>
           <span className="text-xs font-semibold text-slate-200 uppercase tracking-wider font-mono">
             Topología L1-L3 de Infraestructura de Red
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-            Segmentación IEEE 802.1Q
+          <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-semibold ${
+            isFlat
+              ? "bg-amber-950/60 text-amber-300 border border-amber-800/80"
+              : "bg-sky-950/60 text-sky-300 border border-sky-800/80"
+          }`}>
+            {isFlat ? "⚠️ Red Plana (VLAN 1 Nativa)" : "🛡️ Segmentación IEEE 802.1Q"}
           </span>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">

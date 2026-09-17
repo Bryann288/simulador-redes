@@ -86,6 +86,75 @@ export function ExamConfigModal({ isOpen, onClose, activeConfig, onApplyConfig }
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
+          {/* Architecture Selector: Segmented vs Flat Native */}
+          <div className="p-3.5 rounded-lg bg-[#070b14] border border-slate-800 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-200 font-mono flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+                Arquitectura de Dominio L2 / Segmentación
+              </span>
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-semibold ${
+                formConfig.ciscoVlan === 1 && formConfig.teldatVlan === 1
+                  ? "bg-amber-950/60 text-amber-300 border border-amber-800/80"
+                  : "bg-emerald-950/60 text-emerald-300 border border-emerald-800/80"
+              }`}>
+                {formConfig.ciscoVlan === 1 && formConfig.teldatVlan === 1
+                  ? "⚠️ Red Plana (VLAN 1 Nativa)"
+                  : "🛡️ Segmentada IEEE 802.1Q"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const defaultPreset = PRESET_PROFILES.find(p => p.id === "default") || PRESET_PROFILES[0];
+                  setSelectedPresetId("default");
+                  setFormConfig(defaultPreset.config);
+                }}
+                className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${
+                  formConfig.ciscoVlan !== 1
+                    ? "bg-sky-950/40 border-sky-500/80 ring-1 ring-sky-500/40 text-slate-100"
+                    : "bg-[#090f1e] border-slate-800 text-slate-400 hover:border-slate-700"
+                }`}
+              >
+                <div className="text-xs font-bold text-sky-300 flex items-center gap-1.5">
+                  <span>🛡️ Segmentada (802.1Q)</span>
+                  <span className="text-[9px] px-1 bg-sky-900/60 text-sky-200 rounded">Examen & Prod</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1 leading-normal">
+                  VLANs 100/200 dedicadas + subinterfaces + SVI. Aísla fallas y previene que tormentas de broadcast tiren toda la red.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const flatPreset = PRESET_PROFILES.find(p => p.id === "flat_vlan1");
+                  if (flatPreset) {
+                    setSelectedPresetId("flat_vlan1");
+                    setFormConfig(flatPreset.config);
+                  } else {
+                    setFormConfig(prev => ({ ...prev, ciscoVlan: 1, teldatVlan: 1 }));
+                  }
+                }}
+                className={`p-2.5 rounded-lg border text-left transition cursor-pointer ${
+                  formConfig.ciscoVlan === 1 && formConfig.teldatVlan === 1
+                    ? "bg-amber-950/30 border-amber-500/80 ring-1 ring-amber-500/40 text-slate-100"
+                    : "bg-[#090f1e] border-slate-800 text-slate-400 hover:border-slate-700"
+                }`}
+              >
+                <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <span>⚠️ Red Plana (VLAN 1)</span>
+                  <span className="text-[9px] px-1 bg-amber-900/60 text-amber-200 rounded">Opcional</span>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1 leading-normal">
+                  Todo en VLAN 1 nativa sin etiquetar. Sin troncales ni subinterfaces. Ideal si el docente pide explícitamente no usar VLANs.
+                </p>
+              </button>
+            </div>
+          </div>
+
           {activeTab === "presets" ? (
             <div className="space-y-3">
               <div className="text-xs text-slate-400">

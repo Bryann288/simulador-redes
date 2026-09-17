@@ -525,6 +525,14 @@ export class SandboxEngine {
       score -= 5;
     }
 
+    // Check 4: Segmentación L2/L3 (VLANs dedicadas vs Red Plana VLAN 1)
+    const hasCustomVlan = Array.from(this.state.vlans).some(v => v !== 1);
+    if (hasCustomVlan) {
+      achievements.push("Segmentación L2/L3: Se aislaron dominios de difusión con VLANs dedicadas (mitiga tormentas de broadcast y fallas masivas).");
+    } else {
+      warnings.push("Diseño de Red: Operando en VLAN 1 (Red Plana). Se recomienda segmentar en VLANs separadas (ej. VLAN 100) para aislar fallas de red.");
+    }
+
     // Device-specific logic audits
     if (this.device === "cisco") {
       // Check Cisco Secret
@@ -565,7 +573,7 @@ export class SandboxEngine {
     }
 
     if (this.device === "datacom") {
-      // Rule: Must remove port from VLAN 1 before assigning
+      // Rule: Must remove port from VLAN 1 before assigning to a custom VLAN (e.g. VLAN 100)
       const hasAddedVlan100 = cmds.some(c => c.norm.includes("set-member untagged ethernet 1/5"));
       const hasRemovedVlan1 = this.state.datacomVlan1RemovedPorts.has("1/5") || this.state.datacomVlan1RemovedPorts.has("ethernet 1/5");
 
@@ -574,6 +582,8 @@ export class SandboxEngine {
         score -= 25;
       } else if (hasAddedVlan100 && hasRemovedVlan1) {
         achievements.push("Excelente práctica DmOS: Puerto limpiado de VLAN 1 antes de membresía untagged.");
+      } else if (!hasAddedVlan100) {
+        achievements.push("Operación en VLAN 1 Nativa: Puerto 1/5 conservado en membresía untagged por defecto.");
       }
     }
 
