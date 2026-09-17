@@ -131,6 +131,76 @@
           "explanation": "Distancia Administrativa 130: Permanece inactiva en reserva hasta que la ruta principal falla."
         }
       ]
+    },
+    {
+      "id": "C4",
+      "module": "Cisco 860VAE",
+      "title": "C4: Diagnóstico y Auditoría de Tablas CLI",
+      "description": "Inspecciona la tabla de enrutamiento IP, audita la memoria caché ARP y revisa el estado de las interfaces activas.",
+      "steps": [
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["show ip route", "sh ip ro", "sh ip route"],
+          "hint": "Muestra la tabla de enrutamiento con 'show ip route'.",
+          "explanation": "Permite auditar los prefijos conocidos (C=Conectadas, S=Estáticas, R=RIP/BGP)."
+        },
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["show ip arp", "sh ip arp", "sh arp"],
+          "hint": "Audita la correspondencia IP-MAC con 'show ip arp'.",
+          "explanation": "Comprueba la resolución de direcciones de capa 2 para el siguiente salto WAN o hosts locales."
+        },
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["show ip interface brief", "sh ip int br", "sh ip int brief"],
+          "hint": "Inspecciona el resumen de interfaces con 'show ip interface brief'.",
+          "explanation": "Valida de un vistazo que las interfaces físicas y lógicas estén en estado Status UP / Protocol UP."
+        }
+      ]
+    },
+    {
+      "id": "C5",
+      "module": "Cisco 860VAE",
+      "title": "C5: Seguridad de Capa 2 (Port-Security)",
+      "description": "Asegura el puerto FastEthernet0 limitando a 1 sola dirección MAC y configurando la violación en modo restrict.",
+      "steps": [
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["configure terminal", "conf t"],
+          "hint": "Entra a configuración global con 'conf t'.",
+          "explanation": "Requerido para modificar parámetros del puerto."
+        },
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": ["interface FastEthernet0", "int fa0"],
+          "hint": "Entra a la interfaz con 'interface FastEthernet0'.",
+          "explanation": "Selecciona el puerto de acceso hacia la estación PC1."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["switchport port-security", "sw port-sec", "sw port-security"],
+          "hint": "Habilita la seguridad en el puerto con 'switchport port-security'.",
+          "explanation": "Activa la inspección de tramas entrantes por dirección MAC."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["switchport port-security maximum 1", "sw port-sec max 1"],
+          "hint": "Limita a un único host: 'switchport port-security maximum 1'.",
+          "explanation": "Evita la conexión de switches no autorizados o ataques de agotamiento CAM (MAC flooding)."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["switchport port-security violation restrict", "sw port-sec vio res"],
+          "hint": "Define la acción: 'switchport port-security violation restrict'.",
+          "explanation": "'restrict' descarta paquetes de MACs desconocidas e incrementa el contador de violaciones enviando logs."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["end", "exit"],
+          "hint": "Regresa al modo privilegiado con 'end'.",
+          "explanation": "Finaliza la configuración de seguridad."
+        }
+      ]
     }
   ],
   "teldat": [
@@ -251,6 +321,88 @@
           "explanation": "¡REGLA FUNDAMENTAL DE TELDAT!: Sin el comando restart, los cambios no se aplican en la tabla operativa de la RAM."
         }
       ]
+    },
+    {
+      "id": "T3",
+      "module": "Teldat RS123",
+      "title": "T3: Monitorización y Diagnóstico L3 en Proceso 3",
+      "description": "Entra al Proceso 3 de monitorización, examina la tabla de rutas IP y ejecuta un volcado de diagnóstico de rutas estáticas.",
+      "steps": [
+        {
+          "prompt": "*",
+          "valid_commands": ["* p 3", "p 3", "*p 3", "proc 3"],
+          "hint": "Entra al Proceso 3 con '* p 3'.",
+          "explanation": "Proceso 3 es el menú de auditoría en vivo en Teldat CIT."
+        },
+        {
+          "prompt": "+",
+          "valid_commands": ["protocol ip", "prot ip"],
+          "hint": "Entra a la consola de protocolos IP con 'protocol ip'.",
+          "explanation": "Abre el menú de diagnóstico de red de Capa 3."
+        },
+        {
+          "prompt": "IP+",
+          "valid_commands": ["dump-routing-table", "dump ro"],
+          "hint": "Inspecciona la tabla activa con 'dump-routing-table'.",
+          "explanation": "Muestra todas las rutas en la RAM activa del router."
+        },
+        {
+          "prompt": "IP+",
+          "valid_commands": ["static-routes", "stat ro"],
+          "hint": "Audita las rutas estáticas con 'static-routes'.",
+          "explanation": "Verifica que el salto 10.0.12.1 con métrica 1 esté registrado."
+        },
+        {
+          "prompt": "IP+",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal del menú IP con 'exit'.",
+          "explanation": "Retorna a la consola general."
+        }
+      ]
+    },
+    {
+      "id": "T4",
+      "module": "Teldat RS123",
+      "title": "T4: Ruta Flotante y Prioridad de Métrica",
+      "description": "Configura una ruta de respaldo hacia la red Cisco con métrica administrativa superior en caso de fallo del enlace primario.",
+      "steps": [
+        {
+          "prompt": "*",
+          "valid_commands": ["* p 4", "p 4"],
+          "hint": "Entra al Proceso 4 con '* p 4'.",
+          "explanation": "Ingreso a configuración."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["protocol ip", "prot ip"],
+          "hint": "Entra a 'protocol ip'.",
+          "explanation": "Configuración del motor de rutas."
+        },
+        {
+          "prompt": "IP config>",
+          "valid_commands": ["route 192.168.100.0 255.255.255.0 10.0.99.1 10"],
+          "hint": "Añade ruta con métrica 10: route 192.168.100.0 255.255.255.0 10.0.99.1 10",
+          "explanation": "En Teldat una métrica numérica mayor tiene menor prioridad, actuando como ruta flotante de respaldo."
+        },
+        {
+          "prompt": "IP config>",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal con 'exit'.",
+          "explanation": "Regresa a Config>."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["save"],
+          "hint": "Guarda con 'save'.",
+          "explanation": "Persistencia de la ruta en flash."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["restart"],
+          "hint": "Aplica cambios con 'restart'.",
+          "explanation": "Compila y actualiza la tabla en memoria activa."
+        }
+      ]
     }
   ],
   "datacom": [
@@ -339,6 +491,82 @@
           "explanation": "Sintaxis estándar de persistencia en Datacom DmOS."
         }
       ]
+    },
+    {
+      "id": "D2",
+      "module": "Datacom SW1/SW2",
+      "title": "D2: Enlace Troncal 802.1Q Tagged hacia Routers",
+      "description": "Configura el puerto ethernet 1/1 como troncal tagged para transportar tanto la VLAN 100 como la VLAN 200 hacia el core de la red.",
+      "steps": [
+        {
+          "prompt": "DATACOM-SW1#",
+          "valid_commands": ["conf", "configure terminal"],
+          "hint": "Entra a configuración global con 'conf'.",
+          "explanation": "Requerido para añadir membresías a las VLANs."
+        },
+        {
+          "prompt": "DATACOM-SW1(config)#",
+          "valid_commands": ["interface vlan 100", "int vlan 100"],
+          "hint": "Accede a la VLAN 100 con 'interface vlan 100'.",
+          "explanation": "Modificación de puertos miembros."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-vlan)#",
+          "valid_commands": ["set-member tagged ethernet 1/1"],
+          "hint": "Agrega el puerto en tagged: set-member tagged ethernet 1/1",
+          "explanation": "Inserta la etiqueta 802.1Q con ID 100 en las tramas enviadas por ethernet 1/1."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-vlan)#",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal con 'exit'.",
+          "explanation": "Regresa a configuración."
+        },
+        {
+          "prompt": "DATACOM-SW1(config)#",
+          "valid_commands": ["interface vlan 200", "int vlan 200"],
+          "hint": "Entra a VLAN 200 con 'interface vlan 200'.",
+          "explanation": "Define la segunda VLAN del troncal."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-vlan)#",
+          "valid_commands": ["set-member tagged ethernet 1/1"],
+          "hint": "Agrega el puerto también en VLAN 200: set-member tagged ethernet 1/1",
+          "explanation": "Permite que múltiples dominios de broadcast compartan el mismo enlace físico troncal."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-vlan)#",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal a exec con 'exit'.",
+          "explanation": "Finaliza el troncal."
+        }
+      ]
+    },
+    {
+      "id": "D3",
+      "module": "Datacom SW1/SW2",
+      "title": "D3: Inspección de Tabla CAM y Puertos L2",
+      "description": "Verifica las direcciones MAC aprendidas dinámicamente en la tabla de conmutación CAM y el estado de los puertos de red.",
+      "steps": [
+        {
+          "prompt": "DATACOM-SW1#",
+          "valid_commands": ["show mac-address-table", "sh mac"],
+          "hint": "Consulta la tabla CAM con 'show mac-address-table'.",
+          "explanation": "Permite ver la correspondencia entre direcciones MAC aprendidas y números de puerto físico."
+        },
+        {
+          "prompt": "DATACOM-SW1#",
+          "valid_commands": ["show vlan", "sh vlan"],
+          "hint": "Audita las VLANs con 'show vlan'.",
+          "explanation": "Muestra la lista de VLANs activas y qué puertos están en tagged o untagged."
+        },
+        {
+          "prompt": "DATACOM-SW1#",
+          "valid_commands": ["show interface brief", "sh int brief", "sh int br"],
+          "hint": "Inspecciona el estado de los enlaces con 'show interface brief'.",
+          "explanation": "Valida la velocidad, duplex y estado operacional del hardware."
+        }
+      ]
     }
   ],
   "integrado": [
@@ -359,6 +587,38 @@
           "valid_commands": ["show ip route static", "sh ip ro stat", "sh ip route stat", "sh ip ro"],
           "hint": "Audita la tabla de enrutamiento con 'show ip route static'.",
           "explanation": "Valida que la entrada hacia 192.168.200.0/24 esté activa en la RIB de Cisco IOS."
+        },
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["ping 192.168.200.10"],
+          "hint": "Envía ping al host final PC2: ping 192.168.200.10",
+          "explanation": "Confirma la conmutación completa: PC1 -> Datacom -> Cisco -> Teldat -> PC2."
+        }
+      ]
+    },
+    {
+      "id": "INT2",
+      "module": "Reto Integrado",
+      "title": "INT2: Troubleshooting y Resolución de Fallos Multimarca",
+      "description": "Detecta una caída de enlace por mala asignación de VLAN y corrige la ruta estática para restaurar el servicio.",
+      "steps": [
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["traceroute 192.168.200.10", "trace 192.168.200.10"],
+          "hint": "Ejecuta traceroute hacia el destino: traceroute 192.168.200.10",
+          "explanation": "Identifica en qué salto exacto de la topología se interrumpe el flujo de paquetes."
+        },
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["show ip arp", "sh ip arp"],
+          "hint": "Verifica si el router resuelve la MAC del siguiente salto: show ip arp",
+          "explanation": "Si falta la entrada ARP, el problema radica en la capa de enlace L2 o interfaz caída."
+        },
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["ping 10.0.12.2"],
+          "hint": "Valida el enlace WAN punto a punto directo: ping 10.0.12.2",
+          "explanation": "Aísla el problema descartando fallos en el enlace troncal inter-router."
         }
       ]
     }
