@@ -134,9 +134,13 @@ export function TerminalUI({ engine, onCommand, onNextChallenge, onRestartChalle
               )}
             </div>
             {h.output && (
-              <div className="text-rose-400 text-xs ml-4 my-1 font-mono">
+              <pre className={`text-xs ml-4 my-1 p-2 rounded whitespace-pre-wrap font-mono ${
+                h.success 
+                  ? "bg-[#0b1322] text-slate-300 border-l-2 border-sky-500" 
+                  : "bg-[#1c0e14] text-rose-300 border-l-2 border-rose-500"
+              }`}>
                 {h.output}
-              </div>
+              </pre>
             )}
           </div>
         ))}

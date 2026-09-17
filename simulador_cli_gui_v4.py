@@ -55,6 +55,12 @@ def normalizar_comando(cmd_str):
     cmd = re.sub(r'^do\s+wr$', 'do write memory', cmd)
     cmd = re.sub(r'^do\s+wr\s+mem$', 'do write memory', cmd)
     cmd = re.sub(r'^do\s+copy\s+run\s+start$', 'do copy running-config startup-config', cmd)
+    cmd = re.sub(r'^service\s+password-encryption$', 'service password-encryption', cmd)
+    cmd = re.sub(r'^serv\s+password-encryption$', 'service password-encryption', cmd)
+    cmd = re.sub(r'^service\s+pass$', 'service password-encryption', cmd)
+    cmd = re.sub(r'^serv\s+pass$', 'service password-encryption', cmd)
+    cmd = re.sub(r'^service\s+password$', 'service password-encryption', cmd)
+    cmd = re.sub(r'^password-encryption$', 'service password-encryption', cmd)
     
     # Teldat CIT
     cmd = re.sub(r'^\*\s*p\s*4$', '* p 4', cmd)
@@ -72,6 +78,66 @@ def normalizar_comando(cmd_str):
     
     return cmd
 
+def obtener_diagnostico_error(cmd, cmd_norm, prompt, equipo=""):
+    p = prompt or ""
+    eq = (equipo or "").lower()
+    is_cisco = "cisco" in eq or "cisco" in p.lower()
+    is_teldat = "teldat" in eq or "*" in p or "config>" in p.lower()
+    is_datacom = "datacom" in eq or "datacom" in p.lower()
+
+    if is_cisco:
+        if p.endswith(">"):
+            if cmd_norm.startswith("configure") or cmd_norm.startswith("conf"):
+                return "% Command requires privileged mode.\n 💡 (Estás en Modo Usuario '>'. Ingresa primero con 'enable')"
+            if any(cmd_norm.startswith(x) for x in ["interface", "hostname", "vlan", "service password", "banner"]):
+                return "% Unknown command or permission denied.\n 💡 (Error de jerarquía: Estás en Modo Usuario '>'. Debes ingresar a Modo Privilegiado con 'enable' y luego a '(config)#' con 'configure terminal')"
+            return "% Unknown command or computer name, or unable to find computer address.\n 💡 (Comando no reconocido en Modo Usuario '>')"
+        if p.endswith("#") and "(config" not in p:
+            if any(cmd_norm.startswith(x) for x in ["ip address", "switchport"]) or cmd_norm == "no shutdown":
+                return "          ^\n % Invalid input detected at '^' marker.\n 💡 (Error de jerarquía: Debes ingresar a configuración global con 'configure terminal' y luego a la interfaz específica con 'interface <id>')"
+            if any(cmd_norm.startswith(x) for x in ["hostname", "vlan", "enable secret", "service password", "banner"]):
+                return "          ^\n % Invalid input detected at '^' marker.\n 💡 (Error de jerarquía: Este comando requiere modo de configuración global. Ejecuta primero 'configure terminal')"
+            return "          ^\n % Invalid input detected at '^' marker.\n 💡 (Comando no válido en Modo Privilegiado '#')"
+        if p.endswith("(config)#"):
+            if cmd_norm in ["write memory", "wr", "wr mem", "copy running-config startup-config"]:
+                return "          ^\n % Invalid input detected at '^' marker.\n 💡 (Error Cisco IOS: 'write memory' solo es válido en Modo Privilegiado '#'. Usa 'do write memory' para guardar sin salir o sal con 'end')"
+            if any(cmd_norm.startswith(x) for x in ["ip address", "switchport"]) or cmd_norm == "no shutdown":
+                return "          ^\n % Incomplete command or wrong CLI hierarchy.\n 💡 (Error de interfaz: No puedes configurar parámetros de puerto en configuración global. Ingresa primero a la interfaz con 'interface <id>')"
+            if cmd_norm.startswith("show"):
+                return "          ^\n % Invalid input detected at '^' marker.\n 💡 (Los comandos de inspección 'show' requieren anteponer 'do' en modo config, ej: 'do " + cmd + "')"
+        if "(config-if" in p or "(config-vlan" in p:
+            if any(cmd_norm.startswith(x) for x in ["hostname", "enable secret", "service password", "banner"]):
+                return "          ^\n % Invalid command at interface level.\n 💡 (Error de contexto: Este parámetro es de configuración global. Sal primero de la interfaz con 'exit' a modo '(config)#' o regresa con 'end')"
+            if cmd_norm in ["write memory", "wr", "wr mem", "copy running-config startup-config"]:
+                return "          ^\n % Invalid input detected at '^' marker.\n 💡 (Error Cisco IOS: 'write memory' solo es válido en Modo Privilegiado '#'. Estando dentro de una interfaz debes anteponer 'do wr' o salir con 'end')"
+            if cmd_norm.startswith("configure") or cmd_norm.startswith("conf"):
+                return " % Already in configuration mode.\n 💡 (Ya te encuentras dentro del modo de configuración. Para salir a la raíz usa 'end' o 'exit')"
+
+    if is_teldat:
+        if p.strip() == "*":
+            return " -- Command not recognized in root monitor (*).\n 💡 (En Teldat CIT debes ingresar primero al Proceso 4 de configuración con '* p 4' o al Proceso 3 con '* p 3')"
+        if "config>" in p.lower():
+            if "add ip" in cmd_norm or "ip address" in cmd_norm:
+                return " -- Parameter out of context.\n 💡 (En Teldat CIT debes ingresar primero a la interfaz con 'network ethernet0/0' antes de asignar IP)"
+            if "route" in cmd_norm:
+                return " -- Parameter out of context.\n 💡 (Para enrutamiento estático en Teldat debes entrar primero al menú IP con 'protocol ip')"
+
+    if is_datacom:
+        if p.endswith(">"):
+            return " % Error: Command requires privileged mode.\n 💡 (Ingrese a modo privilegiado ejecutando 'enable')"
+        if p.endswith("(config)#"):
+            if "set-member" in cmd_norm:
+                return " % Error: Port membership must be configured inside VLAN.\n 💡 (Debe ingresar primero a la VLAN con 'interface vlan <id>' para asociar puertos)"
+            if "switchport" in cmd_norm:
+                return " % Error: Switchport settings require interface context.\n 💡 (Debe ingresar primero al puerto físico con 'interface ethernet 1/5')"
+            if cmd_norm in ["copy running-config startup-config", "write memory", "copy run start"]:
+                return " % Error: Save command belongs to privileged EXEC mode (#).\n 💡 (Salga a modo '#' con 'end' o 'exit' para guardar permanentemente)"
+        if "(config-vlan" in p or "(config-if" in p:
+            if any(cmd_norm.startswith(x) for x in ["hostname", "banner"]):
+                return " % Error: Command cannot be executed from this context.\n 💡 (Salga a configuración global con 'exit' o regrese con 'end')"
+
+    return " % Invalid input detected or wrong CLI mode.\n 💡 (Verifica la sintaxis o el nivel jerárquico del comando)"
+
 # ------------------------------------------------------------------------------
 # BASE DE DATOS DE RETOS ESTRUCTURADOS POR EQUIPO Y NIVEL
 # ------------------------------------------------------------------------------
@@ -80,14 +146,16 @@ RETOS_POR_MODULO = {
     "Cisco 860VAE": [
         {
             "id": "C1",
-            "titulo": "Cisco - Configuración Básica e Identificación",
+            "titulo": "Cisco - Configuración Básica, Cifrado e Identificación",
             "equipo": "Cisco 860VAE (Cisco IOS)",
-            "descripcion": "Accede a modo privilegiado, entra a configuración global, cambia el nombre del equipo a 'CISCO_AS100', configura la clave de enable 'cisco123' y guarda en NVRAM.",
+            "descripcion": "Accede a modo privilegiado, entra a configuración global, cambia el nombre a 'CISCO_AS100', configura 'enable secret cisco123', activa el cifrado de claves con 'service password-encryption', añade el banner MOTD y guarda en NVRAM.",
             "pasos": [
                 {"prompt": "CISCO>", "cmd": ["enable", "ena", "en"], "pista": "Ingresa a modo privilegiado con 'enable'.", "explicacion": "Modo Usuario '>' permite consultas limitadas; '#' permite cambios."},
                 {"prompt": "CISCO#", "cmd": ["configure terminal", "conf t"], "pista": "Entra a configuración global con 'configure terminal'.", "explicacion": "'configure terminal' modifica la memoria RAM activa."},
                 {"prompt": "CISCO(config)#", "cmd": ["hostname CISCO_AS100", "host CISCO_AS100"], "pista": "Personaliza el nombre con 'hostname CISCO_AS100'.", "explicacion": "Identifica al equipo en los registros de auditoría de red."},
                 {"prompt": "CISCO_AS100(config)#", "cmd": ["enable secret cisco123"], "pista": "Protege el acceso privilegiado con 'enable secret cisco123'.", "explicacion": "'enable secret' encripta la clave con hash MD5 en la configuración."},
+                {"prompt": "CISCO_AS100(config)#", "cmd": ["service password-encryption", "service pass", "serv pass", "service password", "serv password-encryption"], "pista": "Cifra todas las contraseñas en texto plano con 'service password-encryption'.", "explicacion": "'service password-encryption' aplica el algoritmo tipo 7 para ofuscar contraseñas en la running-config."},
+                {"prompt": "CISCO_AS100(config)#", "cmd": ["banner motd #ACCESO RESTRINGIDO - PERSONAL AUTORIZADO#", "banner motd #ACCESO RESTRINGIDO#", "banner motd #PROHIBIDO EL ACCESO NO AUTORIZADO#"], "pista": "Configura el banner legal: banner motd #ACCESO RESTRINGIDO - PERSONAL AUTORIZADO#", "explicacion": "El 'banner motd' presenta la advertencia legal de acceso restringido antes del inicio de sesión."},
                 {"prompt": "CISCO_AS100(config)#", "cmd": ["end", "exit", "ctrl+z", "do write memory", "do wr", "do copy run start"], "pista": "Para guardar: Opción 1: sal con 'end' a modo '#'. Opción 2 (directo): 'do write memory' (o 'do wr').", "explicacion": "En Cisco IOS, 'write memory' pertenece a '#'. Desde '(config)#' sal con 'end' o usa 'do write memory'."},
                 {"prompt": "CISCO_AS100#", "cmd": ["write memory", "wr", "copy run start"], "pista": "Estando en modo privilegiado '#', guarda con 'write memory' o 'wr'.", "explicacion": "'write memory' copia running-config a la memoria NVRAM (startup-config)."}
             ]
@@ -99,11 +167,11 @@ RETOS_POR_MODULO = {
             "descripcion": "Crea la VLAN 100, configura la SVI con IP 192.168.100.1/24, enciéndela y asigna el puerto FastEthernet0 en modo acceso a dicha VLAN.",
             "pasos": [
                 {"prompt": "CISCO_AS100(config)#", "cmd": ["vlan 100", "vlan 1", "interface vlan 1", "int vlan 1"], "pista": "Crea la VLAN local con 'vlan 100' (o 'vlan 1' en modo plano).", "explicacion": "Separa el dominio de difusión de la LAN local (o usa la VLAN 1 nativa)."},
-                {"prompt": "CISCO_AS100(config-vlan)#", "cmd": ["exit", "ex"], "pista": "Sal del menú VLAN con 'exit'.", "explicacion": "Regresa a configuración global."},
+                {"prompt": "CISCO_AS100(config-vlan)#", "cmd": ["exit", "ex", "end"], "pista": "Sal del menú VLAN con 'exit' (o 'end').", "explicacion": "Regresa a configuración global."},
                 {"prompt": "CISCO_AS100(config)#", "cmd": ["interface Vlan100", "int vlan100", "interface Vlan1", "int vlan1"], "pista": "Entra a la SVI con 'interface Vlan100' (o Vlan1).", "explicacion": "En switches/routers ISR la SVI es la interfaz L3 de la VLAN."},
                 {"prompt": "CISCO_AS100(config-if)#", "cmd": ["ip address 192.168.100.1 255.255.255.0", "ip addr 192.168.100.1 255.255.255.0"], "pista": "Asigna IP 192.168.100.1 255.255.255.0.", "explicacion": "Define el Gateway predeterminado de la subred local."},
                 {"prompt": "CISCO_AS100(config-if)#", "cmd": ["no shutdown", "no sh"], "pista": "Activa la SVI con 'no shutdown'.", "explicacion": "Habilita la interfaz en Capa 3."},
-                {"prompt": "CISCO_AS100(config-if)#", "cmd": ["exit", "ex"], "pista": "Sal a configuración global con 'exit'.", "explicacion": "Permite seleccionar el puerto físico L2."},
+                {"prompt": "CISCO_AS100(config-if)#", "cmd": ["exit", "ex", "end", "interface FastEthernet0", "int fa0"], "pista": "Sal con 'exit' o entra directo con 'interface FastEthernet0'.", "explicacion": "Permite seleccionar el puerto físico L2."},
                 {"prompt": "CISCO_AS100(config)#", "cmd": ["interface FastEthernet0", "int fa0"], "pista": "Selecciona el puerto físico con 'interface FastEthernet0'.", "explicacion": "Configura el puerto L2 de acceso hacia la PC1."},
                 {"prompt": "CISCO_AS100(config-if)#", "cmd": ["switchport mode access"], "pista": "Pon el puerto en acceso con 'switchport mode access'.", "explicacion": "El modo acceso entrega tramas sin etiquetar al endpoint."},
                 {"prompt": "CISCO_AS100(config-if)#", "cmd": ["switchport access vlan 100", "switchport access vlan 1", "sw acc vl 100", "sw acc vl 1"], "pista": "Asocia la VLAN con 'switchport access vlan 100' (o vlan 1).", "explicacion": "Conecta el puerto físico con la SVI L3."},
@@ -377,7 +445,19 @@ class NetworkCLISimulatorGUI:
                 
             self._actualizar_paso()
         else:
-            self._escribir_terminal(" % Unknown command or wrong CLI mode\n", "error")
+            # Realismo Cisco/Datacom: si es paso de salida y el alumno ingresó directo el siguiente comando
+            is_exit_step = any(v in ["exit", "ex", "end"] for v in paso["cmd"])
+            has_next = self.paso_idx + 1 < len(reto["pasos"])
+            if is_exit_step and has_next:
+                next_validos = [normalizar_comando(v) for v in reto["pasos"][self.paso_idx + 1]["cmd"]]
+                if cmd_norm in next_validos:
+                    self._escribir_terminal(" [OK - Transición Directa de Contexto Aceptada]\n", "success")
+                    self.paso_idx += 2
+                    self._actualizar_paso()
+                    return
+
+            diag = obtener_diagnostico_error(cmd, cmd_norm, prompt_actual, reto.get("equipo", ""))
+            self._escribir_terminal(f" {diag}\n", "error")
             self.txt_explicacion.delete("1.0", tk.END)
             self.txt_explicacion.insert(tk.END, f"⚠️ ERROR DE SINTAXIS O MODO:\nIngresaste: '{cmd}'\n\nSintaxis válida esperada:\n")
             for v in paso["cmd"]:

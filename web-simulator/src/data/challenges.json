@@ -3,8 +3,8 @@
     {
       "id": "C1",
       "module": "Cisco 860VAE",
-      "title": "C1: Configuración Básica e Identificación",
-      "description": "Accede a modo privilegiado, entra a configuración global, cambia el nombre del equipo a 'CISCO_AS100', configura la clave de enable 'cisco123', añade el banner legal MOTD y guarda en NVRAM.",
+      "title": "C1: Configuración Básica, Cifrado de Claves e Identificación",
+      "description": "Accede a modo privilegiado, entra a configuración global, cambia el nombre a 'CISCO_AS100', configura 'enable secret cisco123', activa el cifrado con 'service password-encryption', añade el banner legal MOTD y guarda en NVRAM.",
       "steps": [
         {
           "prompt": "CISCO>",
@@ -29,6 +29,18 @@
           "valid_commands": ["enable secret cisco123"],
           "hint": "Protege el acceso privilegiado con 'enable secret cisco123'.",
           "explanation": "'enable secret' cifra la clave usando hashing robusto en lugar de texto plano."
+        },
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": [
+            "service password-encryption",
+            "service pass",
+            "serv pass",
+            "service password",
+            "serv password-encryption"
+          ],
+          "hint": "Cifra todas las contraseñas en texto plano con 'service password-encryption'.",
+          "explanation": "'service password-encryption' aplica el algoritmo tipo 7 de Cisco para ofuscar contraseñas de consola, telnet y auxiliares almacenadas en la running-config."
         },
         {
           "prompt": "CISCO_AS100(config)#",
@@ -84,8 +96,8 @@
         },
         {
           "prompt": "CISCO_AS100(config-vlan)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal del menú VLAN con 'exit'.",
+          "valid_commands": ["exit", "ex", "end"],
+          "hint": "Sal del menú VLAN con 'exit' (o 'end' para regresar a modo exec).",
           "explanation": "Regresa a configuración global."
         },
         {
@@ -108,8 +120,16 @@
         },
         {
           "prompt": "CISCO_AS100(config-if)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal a configuración global con 'exit'.",
+          "valid_commands": [
+            "exit",
+            "ex",
+            "end",
+            "interface FastEthernet0",
+            "int fa0",
+            "int fa 0",
+            "interface fa0"
+          ],
+          "hint": "Sal a configuración global con 'exit' o selecciona directamente 'interface FastEthernet0'.",
           "explanation": "Permite configurar los puertos físicos Ethernet."
         },
         {
@@ -138,8 +158,16 @@
         },
         {
           "prompt": "CISCO_AS100(config-if)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal con 'exit'.",
+          "valid_commands": [
+            "exit",
+            "ex",
+            "end",
+            "interface FastEthernet1",
+            "int fa1",
+            "int fa 1",
+            "interface fa1"
+          ],
+          "hint": "Sal con 'exit' o selecciona directamente 'interface FastEthernet1'.",
           "explanation": "Permite seleccionar el siguiente puerto físico."
         },
         {
@@ -194,8 +222,8 @@
         },
         {
           "prompt": "CISCO_AS100(config-if)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal a configuración global con 'exit'.",
+          "valid_commands": ["exit", "ex", "end"],
+          "hint": "Sal a configuración global con 'exit' (o 'end' para modo privilegiado).",
           "explanation": "Regresa para declarar las tablas de rutas estáticas."
         },
         {
@@ -571,8 +599,16 @@
         },
         {
           "prompt": "DATACOM-SW1(config-vlan)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal con 'exit'.",
+          "valid_commands": [
+            "exit",
+            "ex",
+            "end",
+            "interface vlan 100",
+            "int vlan 100",
+            "interface vlan100",
+            "int vlan100"
+          ],
+          "hint": "Sal con 'exit' o entra directamente con 'interface vlan 100'.",
           "explanation": "Retorna a configuración global."
         },
         {
@@ -589,8 +625,15 @@
         },
         {
           "prompt": "DATACOM-SW1(config-vlan)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal con 'exit'.",
+          "valid_commands": [
+            "exit",
+            "ex",
+            "end",
+            "interface ethernet 1/5",
+            "int eth 1/5",
+            "interface eth 1/5"
+          ],
+          "hint": "Sal con 'exit' o selecciona directamente 'interface ethernet 1/5'.",
           "explanation": "Retorna a configuración global."
         },
         {
@@ -613,8 +656,8 @@
         },
         {
           "prompt": "DATACOM-SW1(config-if)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal a modo privilegiado con 'exit'.",
+          "valid_commands": ["end", "exit", "ex"],
+          "hint": "Sal a modo privilegiado con 'end' (o 'exit').",
           "explanation": "Regresa al modo de ejecución."
         },
         {
@@ -651,8 +694,14 @@
         },
         {
           "prompt": "DATACOM-SW1(config-vlan)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal con 'exit'.",
+          "valid_commands": [
+            "exit",
+            "ex",
+            "end",
+            "interface vlan 200",
+            "int vlan 200"
+          ],
+          "hint": "Sal con 'exit' o entra directamente a 'interface vlan 200'.",
           "explanation": "Regresa a configuración."
         },
         {
@@ -669,8 +718,14 @@
         },
         {
           "prompt": "DATACOM-SW1(config-vlan)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal con 'exit'.",
+          "valid_commands": [
+            "exit",
+            "ex",
+            "end",
+            "interface ethernet 1/1",
+            "int eth 1/1"
+          ],
+          "hint": "Sal con 'exit' o selecciona directamente 'interface ethernet 1/1'.",
           "explanation": "Regresa a configuración global."
         },
         {
@@ -687,8 +742,8 @@
         },
         {
           "prompt": "DATACOM-SW1(config-if)#",
-          "valid_commands": ["exit", "ex"],
-          "hint": "Sal a exec con 'exit'.",
+          "valid_commands": ["end", "exit", "ex"],
+          "hint": "Sal a exec con 'end' o 'exit'.",
           "explanation": "Finaliza el troncal y vuelve a exec."
         }
       ]

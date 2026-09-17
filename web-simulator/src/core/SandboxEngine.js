@@ -1,4 +1,4 @@
-import { normalizeCommand } from "./SimulatorEngine";
+import { normalizeCommand } from "./SimulatorEngine.js";
 
 export class SandboxEngine {
   constructor(deviceType = "cisco") {
@@ -17,6 +17,7 @@ export class SandboxEngine {
     this.state = {
       hostname: this.getDefaultHostname(deviceType),
       secretSet: false,
+      servicePasswordEncryption: false,
       vlans: new Set([1]),
       interfaces: {},
       routes: [],
@@ -120,6 +121,12 @@ export class SandboxEngine {
         return { success: true, output: "" };
       }
       if (norm.startsWith("show")) return { success: true, output: "% Must be in privileged mode for full show details." };
+      if (norm.startsWith("configure") || norm.startsWith("interface") || norm.startsWith("hostname") || norm.startsWith("vlan") || norm.startsWith("service password") || norm.startsWith("banner")) {
+        return {
+          success: false,
+          output: "% Command requires privileged mode.\n(Estás en Modo Usuario '>'. Ingresa primero a modo privilegiado con 'enable')."
+        };
+      }
     }
 
     if (mode === "priv_exec") {
@@ -156,6 +163,18 @@ export class SandboxEngine {
         this.state.saved = true;
         return { success: true, output: "Building configuration...\n[OK]" };
       }
+      if (norm.startsWith("ip address") || norm.startsWith("switchport") || norm === "no shutdown") {
+        return {
+          success: false,
+          output: "          ^\n% Invalid input detected at '^' marker.\n(Error de jerarquía: Debes ingresar a configuración global con 'configure terminal' y luego a la interfaz específica con 'interface <id>')."
+        };
+      }
+      if (norm.startsWith("hostname") || norm.startsWith("vlan") || norm.startsWith("enable secret") || norm.startsWith("service password") || norm.startsWith("banner")) {
+        return {
+          success: false,
+          output: "          ^\n% Invalid input detected at '^' marker.\n(Error de jerarquía: Este comando requiere modo de configuración global. Ejecuta primero 'configure terminal')."
+        };
+      }
     }
 
     if (mode === "config") {
@@ -172,7 +191,7 @@ export class SandboxEngine {
       if (norm === "write memory" || norm === "wr" || norm === "copy run start" || norm === "copy running-config startup-config") {
         return {
           success: false,
-          output: "% Invalid input detected at '^' marker.\n(Nota Cisco IOS: 'write memory' solo es válido en Modo Privilegiado '#'. Usa 'do write memory' o sal primero con 'end')."
+          output: "          ^\n% Invalid input detected at '^' marker.\n(Error de modo Cisco IOS: 'write memory' solo es válido en Modo Privilegiado '#'. Usa 'do write memory' para guardar sin salir o sal primero con 'end')."
         };
       }
       if (norm === "exit" || norm === "end") {
@@ -188,6 +207,10 @@ export class SandboxEngine {
       }
       if (norm.startsWith("enable secret ")) {
         this.state.secretSet = true;
+        return { success: true, output: "" };
+      }
+      if (norm === "service password-encryption" || norm === "service pass" || norm === "serv pass" || norm === "service password") {
+        this.state.servicePasswordEncryption = true;
         return { success: true, output: "" };
       }
       if (norm.startsWith("banner motd") || norm.startsWith("banner ")) {
@@ -220,6 +243,12 @@ export class SandboxEngine {
         this.state.routes.push({ network: pfx, mask, nextHop: nh, ad });
         return { success: true, output: "" };
       }
+      if (norm.startsWith("ip address ") || norm.startsWith("switchport") || norm === "no shutdown") {
+        return {
+          success: false,
+          output: "          ^\n% Incomplete command or wrong CLI hierarchy.\n(Error de interfaz: No puedes configurar parámetros de puerto en configuración global. Ingresa primero a la interfaz con 'interface <id>', ej: 'interface Vlan100' o 'interface FastEthernet0')."
+        };
+      }
     }
 
     if (mode === "config_if") {
@@ -236,7 +265,7 @@ export class SandboxEngine {
       if (norm === "write memory" || norm === "wr" || norm === "copy run start" || norm === "copy running-config startup-config") {
         return {
           success: false,
-          output: "% Invalid input detected at '^' marker.\n(Nota Cisco IOS: 'write memory' solo es válido en Modo Privilegiado '#'. Usa 'do write memory' o sal primero con 'end')."
+          output: "          ^\n% Invalid input detected at '^' marker.\n(Error de modo Cisco IOS: 'write memory' solo es válido en Modo Privilegiado '#'. Estando dentro de una interfaz debes anteponer 'do' ('do wr') o salir con 'end')."
         };
       }
       if (norm === "exit") {
@@ -248,6 +277,26 @@ export class SandboxEngine {
         this.mode = "priv_exec";
         this.activeInterface = null;
         return { success: true, output: "" };
+      }
+      if (norm.startsWith("interface ")) {
+        const ifName = parts.slice(1).join("");
+        this.activeInterface = ifName;
+        if (!this.state.interfaces[ifName]) {
+          this.state.interfaces[ifName] = { ip: null, isUp: false, vlan: null, portSecurity: false };
+        }
+        return { success: true, output: "" };
+      }
+      if (norm.startsWith("hostname") || norm.startsWith("enable secret") || norm.startsWith("service password") || norm.startsWith("banner")) {
+        return {
+          success: false,
+          output: "          ^\n% Invalid command at interface level.\n(Error de contexto: Este parámetro es de configuración global. Sal primero de la interfaz con 'exit' a modo '(config)#' o regresa con 'end')."
+        };
+      }
+      if (norm.startsWith("configure terminal") || norm.startsWith("conf t")) {
+        return {
+          success: false,
+          output: "% Already in configuration mode.\n(Ya te encuentras dentro del modo de configuración. Para salir a la raíz usa 'end' o 'exit')."
+        };
       }
       if (norm.startsWith("ip address ")) {
         const ip = parts[2];
@@ -285,17 +334,38 @@ export class SandboxEngine {
     }
 
     if (mode === "config_vlan") {
-      if (norm === "exit" || norm === "end") {
+      if (norm === "exit") {
         this.mode = "config";
         this.activeVlan = null;
         return { success: true, output: "" };
+      }
+      if (norm === "end") {
+        this.mode = "priv_exec";
+        this.activeVlan = null;
+        return { success: true, output: "" };
+      }
+      if (norm.startsWith("interface ")) {
+        const ifName = parts.slice(1).join("");
+        this.activeInterface = ifName;
+        if (!this.state.interfaces[ifName]) {
+          this.state.interfaces[ifName] = { ip: null, isUp: false, vlan: null, portSecurity: false };
+        }
+        this.mode = "config_if";
+        this.activeVlan = null;
+        return { success: true, output: "" };
+      }
+      if (norm.startsWith("hostname") || norm.startsWith("enable secret") || norm.startsWith("service password") || norm.startsWith("banner")) {
+        return {
+          success: false,
+          output: "          ^\n% Invalid command at interface level.\n(Error de contexto: Este parámetro es de configuración global. Sal primero con 'exit' o 'end')."
+        };
       }
       if (norm.startsWith("name ")) {
         return { success: true, output: "" };
       }
     }
 
-    return { success: false, output: "% Invalid input detected at marker or unknown command." };
+    return { success: false, output: "          ^\n% Invalid input detected at '^' marker.\n(Comando o sintaxis no reconocida en este nivel jerárquico)." };
   }
 
   handleTeldat(raw, norm, parts) {
@@ -309,6 +379,12 @@ export class SandboxEngine {
       if (norm === "* p 3" || norm === "p 3") {
         this.mode = "monitor";
         return { success: true, output: "-- Teldat Monitoring Process (P3) Active --" };
+      }
+      if (norm.startsWith("network") || norm.startsWith("protocol") || norm.startsWith("system") || norm.startsWith("add") || norm.startsWith("save") || norm.startsWith("restart")) {
+        return {
+          success: false,
+          output: "-- Command not recognized in root monitor (*).\n(En Teldat CIT debes ingresar primero al Proceso 4 de configuración de red con '* p 4' o al Proceso 3 de monitoreo con '* p 3')."
+        };
       }
     }
 
@@ -345,6 +421,18 @@ export class SandboxEngine {
         this.state.restarted = true;
         return { success: true, output: "System restarting routing and interfaces...\nRouting tables successfully updated in active RAM." };
       }
+      if (norm.startsWith("add ip-address") || norm.startsWith("ip address")) {
+        return {
+          success: false,
+          output: "-- Parameter out of context.\n(En Teldat CIT debes ingresar primero a la interfaz de red con 'network ethernet0/0' antes de asignar direcciones IP)."
+        };
+      }
+      if (norm.startsWith("add route") || norm.startsWith("route")) {
+        return {
+          success: false,
+          output: "-- Parameter out of context.\n(Para enrutamiento estático en Teldat debes entrar primero al menú IP con 'protocol ip')."
+        };
+      }
     }
 
     if (mode === "system_config") {
@@ -379,6 +467,12 @@ export class SandboxEngine {
       if (norm.startsWith("encapsulation dot1q ")) {
         return { success: true, output: "" };
       }
+      if (norm.startsWith("protocol") || norm.startsWith("system") || norm === "restart" || norm === "save") {
+        return {
+          success: false,
+          output: "-- Command not available at interface level.\n(Sal primero con 'exit' al menú 'Config>' para ejecutar comandos globales)."
+        };
+      }
     }
 
     if (mode === "ip_config") {
@@ -393,6 +487,12 @@ export class SandboxEngine {
         const metric = parts[4] || "1";
         this.state.routes.push({ network: dest, mask, nextHop: gw, metric });
         return { success: true, output: "" };
+      }
+      if (norm.startsWith("network")) {
+        return {
+          success: false,
+          output: "-- Cannot change network from IP protocol menu.\n(Sal con 'exit' a 'Config>' para cambiar de interfaz)."
+        };
       }
     }
 
@@ -427,7 +527,7 @@ export class SandboxEngine {
       }
     }
 
-    return { success: false, output: "% Command not recognized in this process/menu." };
+    return { success: false, output: "-- Command not recognized in this process or invalid syntax." };
   }
 
   handleDatacom(raw, norm, parts) {
@@ -438,14 +538,20 @@ export class SandboxEngine {
         this.mode = "priv_exec";
         return { success: true, output: "" };
       }
+      if (norm.startsWith("conf") || norm.startsWith("interface") || norm.startsWith("hostname") || norm.startsWith("banner")) {
+        return {
+          success: false,
+          output: "% Error: Command requires privileged mode.\n(Ingrese a modo privilegiado con 'enable')."
+        };
+      }
     }
 
     if (mode === "priv_exec") {
-      if (norm === "configure terminal") {
+      if (norm === "configure terminal" || norm === "conf") {
         this.mode = "config";
         return { success: true, output: "" };
       }
-      if (norm === "copy running-config startup-config" || norm === "write memory") {
+      if (norm === "copy running-config startup-config" || norm === "write memory" || norm === "copy run start") {
         this.state.saved = true;
         return { success: true, output: "Configuration committed and saved to startup-config." };
       }
@@ -455,10 +561,16 @@ export class SandboxEngine {
       if (norm.startsWith("show vlan")) {
         return { success: true, output: "VLAN  Name                             Status    Ports\n----  -------------------------------- --------- -------------------------------\n1     default                          active    \n100   VLAN0100                         active    eth1/5(U), eth1/1(T)\n200   VLAN0200                         active    eth1/1(T)" };
       }
+      if (norm.startsWith("interface") || norm.startsWith("hostname") || norm.startsWith("banner") || norm.startsWith("set-member")) {
+        return {
+          success: false,
+          output: "% Error: Command only available in configuration mode.\n(Ingrese a modo de configuración con 'conf' o 'configure terminal')."
+        };
+      }
     }
 
     if (mode === "config") {
-      if (norm === "exit") {
+      if (norm === "exit" || norm === "end") {
         this.mode = "priv_exec";
         return { success: true, output: "" };
       }
@@ -466,7 +578,11 @@ export class SandboxEngine {
         this.state.hostname = parts[1].toUpperCase();
         return { success: true, output: "" };
       }
-      if (norm.startsWith("banner motd ") || norm.startsWith("banner ")) {
+      if (norm === "service password-encryption" || norm === "password-encryption") {
+        this.state.servicePasswordEncryption = true;
+        return { success: true, output: "" };
+      }
+      if (norm.startsWith("banner motd ") || norm.startsWith("banner ") || norm.startsWith("banner login ")) {
         this.state.bannerSet = true;
         return { success: true, output: "" };
       }
@@ -483,6 +599,24 @@ export class SandboxEngine {
         this.mode = "config_if";
         return { success: true, output: "" };
       }
+      if (norm.startsWith("set-member") || norm.startsWith("no set-member")) {
+        return {
+          success: false,
+          output: "% Error: Port membership must be configured inside VLAN.\n(Debe ingresar primero a la VLAN con 'interface vlan <id>' para asociar puertos)."
+        };
+      }
+      if (norm.startsWith("switchport")) {
+        return {
+          success: false,
+          output: "% Error: Switchport settings require interface context.\n(Debe ingresar primero al puerto físico con 'interface ethernet 1/5')."
+        };
+      }
+      if (norm === "copy run start" || norm === "copy running-config startup-config" || norm === "write memory") {
+        return {
+          success: false,
+          output: "% Error: Save command belongs to privileged EXEC mode (#).\n(Salga a modo '#' con 'end' o 'exit' para guardar permanentemente)."
+        };
+      }
     }
 
     if (mode === "config_vlan") {
@@ -490,6 +624,31 @@ export class SandboxEngine {
         this.mode = "config";
         this.activeVlan = null;
         return { success: true, output: "" };
+      }
+      if (norm === "end") {
+        this.mode = "priv_exec";
+        this.activeVlan = null;
+        return { success: true, output: "" };
+      }
+      if (norm.startsWith("interface vlan") || norm.startsWith("interface ethernet")) {
+        if (norm.startsWith("interface vlan")) {
+          const vlId = parts[parts.length - 1];
+          this.activeVlan = parseInt(vlId, 10);
+          this.state.vlans.add(this.activeVlan);
+          return { success: true, output: "" };
+        } else {
+          const port = parts.slice(2).join(" ");
+          this.activeInterface = port;
+          this.mode = "config_if";
+          this.activeVlan = null;
+          return { success: true, output: "" };
+        }
+      }
+      if (norm.startsWith("hostname") || norm.startsWith("banner")) {
+        return {
+          success: false,
+          output: "% Error: Command cannot be executed from VLAN context.\n(Salga a configuración global con 'exit' o regrese con 'end')."
+        };
       }
       if (norm.startsWith("no set-member ethernet ")) {
         const port = parts.slice(3).join(" ");
@@ -506,6 +665,12 @@ export class SandboxEngine {
         const port = parts.slice(3).join(" ");
         return { success: true, output: `Port ${port} added as tagged (802.1Q) to VLAN ${this.activeVlan}.` };
       }
+      if (norm === "copy run start" || norm === "write memory") {
+        return {
+          success: false,
+          output: "% Error: Save command belongs to privileged EXEC mode (#).\n(Regrese con 'end' a modo '#' para guardar la configuración)."
+        };
+      }
     }
 
     if (mode === "config_if") {
@@ -514,8 +679,42 @@ export class SandboxEngine {
         this.activeInterface = null;
         return { success: true, output: "" };
       }
+      if (norm === "end") {
+        this.mode = "priv_exec";
+        this.activeInterface = null;
+        return { success: true, output: "" };
+      }
+      if (norm.startsWith("interface vlan") || norm.startsWith("interface ethernet")) {
+        if (norm.startsWith("interface vlan")) {
+          const vlId = parts[parts.length - 1];
+          this.activeVlan = parseInt(vlId, 10);
+          this.state.vlans.add(this.activeVlan);
+          this.mode = "config_vlan";
+          this.activeInterface = null;
+          return { success: true, output: "" };
+        } else {
+          const port = parts.slice(2).join(" ");
+          this.activeInterface = port;
+          return { success: true, output: "" };
+        }
+      }
+      if (norm.startsWith("hostname") || norm.startsWith("banner")) {
+        return {
+          success: false,
+          output: "% Error: Command cannot be executed from interface context.\n(Salga a configuración global con 'exit' o regrese con 'end')."
+        };
+      }
       if (norm.startsWith("switchport native vlan ")) {
         return { success: true, output: "" };
+      }
+      if (norm === "no shutdown") {
+        return { success: true, output: `Interface ${this.activeInterface} operational state changed to UP.` };
+      }
+      if (norm === "copy run start" || norm === "write memory") {
+        return {
+          success: false,
+          output: "% Error: Save command belongs to privileged EXEC mode (#).\n(Regrese con 'end' a modo '#' para guardar la configuración)."
+        };
       }
     }
 
@@ -554,6 +753,14 @@ export class SandboxEngine {
       achievements.push("Cumplimiento y Seguridad Perimetral: Se configuró mensaje legal de advertencia (banner motd).");
     } else {
       warnings.push("Seguridad & Auditoría: Falta configurar el 'banner motd' de advertencia de acceso no autorizado.");
+      score -= 5;
+    }
+
+    // Check 3.5: Global Password Encryption (service password-encryption)
+    if (this.state.servicePasswordEncryption) {
+      achievements.push("Cifrado de claves activado: 'service password-encryption' protege contraseñas de consola y vty en texto plano.");
+    } else if (this.device === "cisco" || this.device === "datacom") {
+      warnings.push("Seguridad & Auditoría: No se activó el cifrado global de contraseñas ('service password-encryption'). Las credenciales secundarias quedan vulnerables.");
       score -= 5;
     }
 
