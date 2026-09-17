@@ -11,6 +11,11 @@ export function normalizeCommand(cmdStr) {
   cmd = cmd.replace(/^int\s+fa0$/, "interface fastethernet0");
   cmd = cmd.replace(/^int\s+fa\s*0$/, "interface fastethernet0");
   cmd = cmd.replace(/^int\s+fa1$/, "interface fastethernet1");
+  cmd = cmd.replace(/^int\s+fa\s*1$/, "interface fastethernet1");
+  cmd = cmd.replace(/^int\s+gi0$/, "interface gigabitethernet0");
+  cmd = cmd.replace(/^int\s+gi\s*0$/, "interface gigabitethernet0");
+  cmd = cmd.replace(/^int\s+g0$/, "interface gigabitethernet0");
+  cmd = cmd.replace(/^int\s+gi0\/0$/, "interface gigabitethernet0/0");
   cmd = cmd.replace(/^int\s+vlan\s*(\d+)$/, "interface vlan$1");
   cmd = cmd.replace(/^ip\s+addr\s+/, "ip address ");
   cmd = cmd.replace(/^ip\s+add\s+/, "ip address ");
@@ -35,7 +40,10 @@ export function normalizeCommand(cmdStr) {
   cmd = cmd.replace(/^proc\s+3$/, "* p 3");
   cmd = cmd.replace(/^net\s+eth0\/0$/, "network ethernet0/0");
   cmd = cmd.replace(/^net\s+ethernet0\/0$/, "network ethernet0/0");
-  cmd = cmd.replace(/^net\s+ethernet0\/0\.200$/, "network ethernet0/0.200");
+  cmd = cmd.replace(/^net\s+eth0\/1$/, "network ethernet0/1");
+  cmd = cmd.replace(/^net\s+ethernet0\/1$/, "network ethernet0/1");
+  cmd = cmd.replace(/^net\s+ethernet0\/0\.(\d+)$/, "network ethernet0/0.$1");
+  cmd = cmd.replace(/^net\s+eth0\/0\.(\d+)$/, "network ethernet0/0.$1");
   cmd = cmd.replace(/^prot\s+ip$/, "protocol ip");
 
   return cmd;
@@ -55,18 +63,18 @@ export class SimulatorEngine {
   }
 
   getHint() {
-    if (this.isCompleted) return "✅ ¡Excelente trabajo! Has completado todos los pasos de este reto.";
+    if (this.isCompleted) return "Directivas del desafío completadas satisfactoriamente.";
     return this.challenge.steps[this.currentStep].hint;
   }
 
   getExplanation() {
-    if (this.isCompleted) return "🌟 Reto finalizado con éxito. Puedes avanzar al siguiente nivel usando el botón o el menú superior.";
+    if (this.isCompleted) return "Configuración validada con éxito. Procede al siguiente nivel del laboratorio.";
     return this.challenge.steps[this.currentStep].explanation;
   }
 
   processCommand(cmd) {
     if (this.isCompleted) {
-      return { success: false, output: "% Reto ya completado. Pasa al siguiente reto para continuar." };
+      return { success: false, output: "% Desafío ya completado. Avanza al siguiente nivel." };
     }
     
     const rawCmd = cmd.trim().toLowerCase();

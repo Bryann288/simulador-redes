@@ -154,10 +154,14 @@ export function applyNetworkConfigToChallenge(challenge, netConfig) {
     res = res.replaceAll(defaultValues.teldatPcIp, netConfig.teldatPcIp);
     res = res.replaceAll(defaultValues.wanCiscoIp, netConfig.wanCiscoIp);
     res = res.replaceAll(defaultValues.wanTeldatIp, netConfig.wanTeldatIp);
+    res = res.replaceAll(defaultValues.wanNet, netConfig.wanNet);
 
     // Replace masks if different
     if (netConfig.ciscoLanMask !== defaultValues.ciscoLanMask) {
       res = res.replaceAll(defaultValues.ciscoLanMask, netConfig.ciscoLanMask);
+    }
+    if (netConfig.wanMask !== defaultValues.wanMask) {
+      res = res.replaceAll(defaultValues.wanMask, netConfig.wanMask);
     }
 
     // Replace VLANs (preserving word boundaries or dot/colon formats)
