@@ -174,6 +174,10 @@ export class SandboxEngine {
         this.state.secretSet = true;
         return { success: true, output: "" };
       }
+      if (norm.startsWith("banner motd") || norm.startsWith("banner ")) {
+        this.state.bannerSet = true;
+        return { success: true, output: "" };
+      }
       if (norm.startsWith("vlan ")) {
         const vlanId = parseInt(parts[1], 10);
         if (!isNaN(vlanId)) {
@@ -320,6 +324,10 @@ export class SandboxEngine {
         this.state.hostname = parts[1].toUpperCase();
         return { success: true, output: "" };
       }
+      if (norm.startsWith("banner ") || norm.startsWith("welcome-message ")) {
+        this.state.bannerSet = true;
+        return { success: true, output: "" };
+      }
     }
 
     if (mode === "if_config") {
@@ -426,6 +434,10 @@ export class SandboxEngine {
         this.state.hostname = parts[1].toUpperCase();
         return { success: true, output: "" };
       }
+      if (norm.startsWith("banner motd ") || norm.startsWith("banner ")) {
+        this.state.bannerSet = true;
+        return { success: true, output: "" };
+      }
       if (norm.startsWith("interface vlan")) {
         const vlId = parts[parts.length - 1];
         this.activeVlan = parseInt(vlId, 10);
@@ -503,6 +515,14 @@ export class SandboxEngine {
     } else {
       warnings.push("Atención: No se ejecutó comando de guardado permanente (write memory / save / copy run start).");
       score -= 15;
+    }
+
+    // Check 3: Legal Warning Banner (Banner MOTD / Welcome message)
+    if (this.state.bannerSet) {
+      achievements.push("Cumplimiento y Seguridad Perimetral: Se configuró mensaje legal de advertencia (banner motd).");
+    } else {
+      warnings.push("Seguridad & Auditoría: Falta configurar el 'banner motd' de advertencia de acceso no autorizado.");
+      score -= 5;
     }
 
     // Device-specific logic audits

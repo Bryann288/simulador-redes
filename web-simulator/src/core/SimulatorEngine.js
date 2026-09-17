@@ -84,10 +84,14 @@ export class SimulatorEngine {
     const validNormalized = (step.valid_commands || []).map(v => normalizeCommand(v));
     const validRaw = (step.valid_commands || []).map(v => v.toLowerCase().trim());
 
+    const hasBannerStep = validRaw.some(v => v.startsWith("banner") || v.startsWith("welcome-message"));
+    const isBannerMatch = hasBannerStep && (rawCmd.startsWith("banner") || rawCmd.startsWith("welcome-message"));
+
     const isMatch = validRaw.includes(rawCmd) || 
                     validNormalized.includes(normalizedCmd) ||
                     validNormalized.includes(rawCmd) ||
-                    validRaw.includes(normalizedCmd);
+                    validRaw.includes(normalizedCmd) ||
+                    isBannerMatch;
 
     if (isMatch) {
       this.history.push({ cmd, success: true });

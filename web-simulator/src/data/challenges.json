@@ -4,7 +4,7 @@
       "id": "C1",
       "module": "Cisco 860VAE",
       "title": "C1: Configuración Básica e Identificación",
-      "description": "Accede a modo privilegiado, entra a configuración global, cambia el nombre del equipo a 'CISCO_AS100', configura la clave de enable 'cisco123' y guarda en NVRAM.",
+      "description": "Accede a modo privilegiado, entra a configuración global, cambia el nombre del equipo a 'CISCO_AS100', configura la clave de enable 'cisco123', añade el banner legal MOTD y guarda en NVRAM.",
       "steps": [
         {
           "prompt": "CISCO>",
@@ -29,6 +29,17 @@
           "valid_commands": ["enable secret cisco123"],
           "hint": "Protege el acceso privilegiado con 'enable secret cisco123'.",
           "explanation": "'enable secret' cifra la clave usando hashing robusto en lugar de texto plano."
+        },
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": [
+            "banner motd #ACCESO RESTRINGIDO - PERSONAL AUTORIZADO#",
+            "banner motd #ACCESO AUTORIZADO UNICAMENTE#",
+            "banner motd #PROHIBIDO EL ACCESO NO AUTORIZADO#",
+            "banner motd #ACCESO RESTRINGIDO#"
+          ],
+          "hint": "Configura el banner legal con: banner motd #ACCESO RESTRINGIDO - PERSONAL AUTORIZADO#",
+          "explanation": "El 'banner motd' (Message of the Day) presenta una advertencia legal de acceso restringido antes del inicio de sesión (requisito clave en auditorías de seguridad perimetral)."
         },
         {
           "prompt": "CISCO_AS100(config)#",
@@ -261,8 +272,8 @@
     {
       "id": "T1",
       "module": "Teldat RS123",
-      "title": "T1: Consola, Parámetros y Navegación de Procesos",
-      "description": "Verifica el entorno Teldat CIT, ingresa al Proceso 4 de configuración (* p 4), asigna el nombre 'TELDAT_AS200' y navega al Proceso 3 de monitorización.",
+      "title": "T1: Consola, Parámetros, Banner Legal y Navegación de Procesos",
+      "description": "Verifica el entorno Teldat CIT, ingresa al Proceso 4 de configuración (* p 4), asigna el nombre 'TELDAT_AS200', establece el banner de advertencia legal y navega al Proceso 3 de monitorización.",
       "steps": [
         {
           "prompt": "*",
@@ -281,6 +292,18 @@
           "valid_commands": ["name TELDAT_AS200", "name teldat_as200"],
           "hint": "Asigna el nombre con 'name TELDAT_AS200'.",
           "explanation": "Define el prompt e identidad del router en la red."
+        },
+        {
+          "prompt": "System config>",
+          "valid_commands": [
+            "banner \"ACCESO RESTRINGIDO - TELDAT AS200\"",
+            "banner \"ACCESO RESTRINGIDO\"",
+            "banner #ACCESO RESTRINGIDO#",
+            "welcome-message \"ACCESO RESTRINGIDO\"",
+            "banner motd \"ACCESO RESTRINGIDO\""
+          ],
+          "hint": "Configura el banner legal con: banner \"ACCESO RESTRINGIDO - TELDAT AS200\"",
+          "explanation": "En routers Teldat CIT, 'banner' o 'welcome-message' dentro de 'System config>' despliega la advertencia legal de acceso no autorizado."
         },
         {
           "prompt": "System config>",
@@ -481,8 +504,8 @@
     {
       "id": "D1",
       "module": "Datacom SW1/SW2",
-      "title": "D1: Capa 2 Estricta, Limpieza de VLAN 1 y Puerto de Acceso (Host PC/Laptop)",
-      "description": "Configura el switch Datacom, remueve el puerto ethernet 1/5 de la VLAN 1 nativa para evitar colisiones untagged, asígnalo a VLAN 100 de acceso, define el PVID nativo y enciende la interfaz física hacia la estación PC1/Laptop.",
+      "title": "D1: Identificación, Banner Legal y Puerto de Acceso (Host PC/Laptop)",
+      "description": "Configura el switch Datacom, asigna el hostname y banner legal MOTD, remueve el puerto ethernet 1/5 de la VLAN 1 nativa para evitar colisiones untagged, asígnalo a VLAN 100 de acceso, define el PVID nativo y enciende la interfaz física hacia la estación PC1/Laptop.",
       "steps": [
         {
           "prompt": "DATACOM-SW>",
@@ -501,6 +524,17 @@
           "valid_commands": ["hostname DATACOM-SW1", "hostname datacom-sw1"],
           "hint": "Cambia el nombre con 'hostname DATACOM-SW1'.",
           "explanation": "Identifica al switch 1 del laboratorio de red."
+        },
+        {
+          "prompt": "DATACOM-SW1(config)#",
+          "valid_commands": [
+            "banner motd #ACCESO RESTRINGIDO - DATACOM SW1#",
+            "banner motd #ACCESO RESTRINGIDO#",
+            "banner motd \"ACCESO RESTRINGIDO\"",
+            "banner login #ACCESO RESTRINGIDO#"
+          ],
+          "hint": "Configura el banner de seguridad con: banner motd #ACCESO RESTRINGIDO - DATACOM SW1#",
+          "explanation": "En switches Datacom DmOS, 'banner motd' o 'banner login' presenta la advertencia legal previa a la autenticación en consola o SSH."
         },
         {
           "prompt": "DATACOM-SW1(config)#",

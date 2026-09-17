@@ -85,6 +85,7 @@ RETOS_POR_MODULO = {
                 {"prompt": "CISCO#", "cmd": ["configure terminal", "conf t"], "pista": "Entra a configuración global con 'configure terminal'.", "explicacion": "'configure terminal' modifica la memoria RAM activa."},
                 {"prompt": "CISCO(config)#", "cmd": ["hostname CISCO_AS100", "host CISCO_AS100"], "pista": "Personaliza el nombre con 'hostname CISCO_AS100'.", "explicacion": "Identifica al equipo en los registros de auditoría de red."},
                 {"prompt": "CISCO_AS100(config)#", "cmd": ["enable secret cisco123"], "pista": "Protege el acceso privilegiado con 'enable secret cisco123'.", "explicacion": "'enable secret' encripta la clave con hash MD5 en la configuración."},
+                {"prompt": "CISCO_AS100(config)#", "cmd": ["banner motd #ACCESO RESTRINGIDO - PERSONAL AUTORIZADO#", "banner motd #ACCESO RESTRINGIDO#"], "pista": "Configura el banner legal: banner motd #ACCESO RESTRINGIDO - PERSONAL AUTORIZADO#", "explicacion": "El 'banner motd' despliega la advertencia legal de acceso restringido previa al login."},
                 {"prompt": "CISCO_AS100(config)#", "cmd": ["end", "wr", "write memory"], "pista": "Guarda la configuración en NVRAM con 'write memory' o 'wr'.", "explicacion": "'write memory' copia running-config a startup-config."}
             ]
         },
@@ -128,6 +129,7 @@ RETOS_POR_MODULO = {
                 {"prompt": "*", "cmd": ["* p 4", "p 4"], "pista": "Ingresa al Proceso 4 de Configuración con '* p 4'.", "explicacion": "Proceso 4: Entorno exclusivo de modificación de IP y rutas."},
                 {"prompt": "Config>", "cmd": ["system"], "pista": "Entra a configuración del sistema con 'system'.", "explicacion": "Administra parámetros globales del router."},
                 {"prompt": "System config>", "cmd": ["name TELDAT_AS200"], "pista": "Asigna el nombre con 'name TELDAT_AS200'.", "explicacion": "Define la identidad de consola del Teldat."},
+                {"prompt": "System config>", "cmd": ["banner \"ACCESO RESTRINGIDO - TELDAT AS200\"", "welcome-message \"ACCESO RESTRINGIDO\"", "banner #ACCESO RESTRINGIDO#"], "pista": "Configura el banner legal: banner \"ACCESO RESTRINGIDO - TELDAT AS200\"", "explicacion": "En Teldat CIT, 'banner' o 'welcome-message' dentro de 'System config>' establece el aviso de seguridad."},
                 {"prompt": "System config>", "cmd": ["exit", "ex"], "pista": "Sal con 'exit'.", "explicacion": "Regresa al menú principal Config>."},
                 {"prompt": "Config>", "cmd": ["exit", "ex", "ctrl+p"], "pista": "Regresa al prompt general '*' con 'exit' o Ctrl+P.", "explicacion": "Permite cambiar de proceso en el CIT."},
                 {"prompt": "*", "cmd": ["* p 3", "p 3"], "pista": "Ingresa al Proceso 3 de Monitorización con '* p 3'.", "explicacion": "Proceso 3: Pruebas de ping, dump de tablas y diagnóstico L3."}
@@ -163,6 +165,7 @@ RETOS_POR_MODULO = {
                 {"prompt": "DATACOM-SW>", "cmd": ["enable", "ena"], "pista": "Ingresa a modo privilegiado con 'enable'.", "explicacion": "Habilita la edición en el switch Datacom DmOS."},
                 {"prompt": "DATACOM-SW#", "cmd": ["conf", "configure terminal"], "pista": "Entra a configuración con 'conf'.", "explicacion": "Abre el bloque de edición global."},
                 {"prompt": "DATACOM-SW(config)#", "cmd": ["hostname DATACOM-SW1"], "pista": "Cambia el nombre con 'hostname DATACOM-SW1'.", "explicacion": "Identifica al switch 1 del laboratorio."},
+                {"prompt": "DATACOM-SW1(config)#", "cmd": ["banner motd #ACCESO RESTRINGIDO - DATACOM SW1#", "banner login #ACCESO RESTRINGIDO#", "banner motd #ACCESO RESTRINGIDO#"], "pista": "Configura el banner de seguridad: banner motd #ACCESO RESTRINGIDO - DATACOM SW1#", "explicacion": "En switches Datacom DmOS, 'banner motd' o 'banner login' presenta la advertencia legal previa a la autenticación."},
                 {"prompt": "DATACOM-SW1(config)#", "cmd": ["interface vlan 1", "int vlan 1"], "pista": "Entra a la VLAN 1 nativa con 'interface vlan 1'.", "explicacion": "Gestiona la membresía por defecto."},
                 {"prompt": "DATACOM-SW1(config-vlan)#", "cmd": ["no set-member ethernet 1/5"], "pista": "Remueve el puerto 1/5 de la VLAN 1 con 'no set-member ethernet 1/5'.", "explicacion": "PRACTICA OBLIGATORIA: Evita colisiones de tramas untagged."},
                 {"prompt": "DATACOM-SW1(config-vlan)#", "cmd": ["exit", "ex"], "pista": "Sal con 'exit'.", "explicacion": "Retorna a configuración global."},
@@ -347,7 +350,10 @@ class NetworkCLISimulatorGUI:
         cmd_norm = normalizar_comando(cmd)
         validos_norm = [normalizar_comando(v) for v in paso["cmd"]]
 
-        if cmd_norm in validos_norm:
+        has_banner = any(v.startswith("banner") or v.startswith("welcome-message") for v in paso["cmd"])
+        is_banner_match = has_banner and (cmd_norm.startswith("banner") or cmd_norm.startswith("welcome-message"))
+
+        if cmd_norm in validos_norm or is_banner_match:
             self._escribir_terminal(" [OK - Comando Aceptado]\n", "success")
             self.paso_idx += 1
             self._actualizar_paso()
