@@ -6,21 +6,49 @@ export function SandboxUI() {
   const [engine, setEngine] = useState(() => new SandboxEngine("cisco"));
   const [input, setInput] = useState("");
   const [history, setHistory] = useState([]);
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const [auditReport, setAuditReport] = useState(null);
+
   const endRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Switch active sandbox device
   const handleDeviceChange = (newDevice) => {
     setDeviceType(newDevice);
     const newEngine = new SandboxEngine(newDevice);
     setEngine(newEngine);
     setHistory([]);
+    setCommandHistory([]);
+    setHistoryIndex(-1);
     setInput("");
     setAuditReport(null);
   };
 
   const handleKeyDown = (e) => {
+    // Arrow Up / Down command history traversal
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (commandHistory.length === 0) return;
+      const nextIdx = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
+      setHistoryIndex(nextIdx);
+      setInput(commandHistory[nextIdx]);
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (historyIndex === -1) return;
+      const nextIdx = historyIndex + 1;
+      if (nextIdx >= commandHistory.length) {
+        setHistoryIndex(-1);
+        setInput("");
+      } else {
+        setHistoryIndex(nextIdx);
+        setInput(commandHistory[nextIdx]);
+      }
+      return;
+    }
+
     if (e.key === "Enter" && input.trim() !== "") {
       const currentPrompt = engine.getCurrentPrompt();
       const result = engine.processCommand(input);
@@ -29,9 +57,11 @@ export function SandboxUI() {
         ...prev,
         { prompt: currentPrompt, cmd: input, ...result }
       ]);
+      setCommandHistory((prev) => [...prev, input]);
+      setHistoryIndex(-1);
       setInput("");
 
-      // Live audit on command entry
+      // Re-run real-time audit
       setAuditReport(engine.evaluateConfiguration());
     }
   };
@@ -48,37 +78,40 @@ export function SandboxUI() {
     const newEngine = new SandboxEngine(deviceType);
     setEngine(newEngine);
     setHistory([]);
+    setCommandHistory([]);
+    setHistoryIndex(-1);
     setAuditReport(null);
     if (inputRef.current) inputRef.current.focus();
   };
 
   return (
-    <div className="flex-1 flex gap-5 overflow-hidden">
-      {/* Terminal Sandbox */}
+    <div className="flex-1 flex gap-4 overflow-hidden font-sans">
+      {/* Console Window */}
       <div 
-        className="flex-1 bg-[#090d13] text-[#00ff88] p-5 font-mono overflow-y-auto rounded-xl border border-gray-800 shadow-2xl flex flex-col cursor-text"
+        className="flex-1 bg-[#050811] text-slate-100 rounded-xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden cursor-text font-mono"
         onClick={() => inputRef.current?.focus()}
       >
-        {/* Sandbox Header */}
-        <div className="mb-4 pb-3 border-b border-gray-800 flex items-center justify-between">
+        {/* Terminal Window Header */}
+        <div className="bg-[#0b0f19] px-4 py-2.5 border-b border-slate-800 flex items-center justify-between text-xs select-none">
           <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <div>
-              <h3 className="text-white text-xs font-bold uppercase tracking-wider">
-                Modo Libre (Sandbox) - Consola Abierta
-              </h3>
-              <p className="text-gray-400 text-[11px]">
-                Sin guión predeterminado. Prueba comandos libremente y audita tu configuración.
-              </p>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+            </div>
+            <div className="flex items-center gap-2 text-slate-400 font-mono text-xs">
+              <span className="text-sky-400 font-semibold">Consola Abierta (Sandbox Libre)</span>
+              <span className="text-slate-600">/</span>
+              <span className="text-slate-300">Auditoría Sintáctica & Lógica</span>
             </div>
           </div>
 
           {/* Device Tabs inside Sandbox */}
-          <div className="flex items-center gap-1.5 bg-[#111620] p-1 rounded-lg border border-gray-700">
+          <div className="flex items-center gap-1 bg-[#080d19] p-1 rounded-lg border border-slate-700/80">
             {[
-              { id: "cisco", label: "Cisco IOS", icon: "🌐" },
-              { id: "teldat", label: "Teldat CIT", icon: "📟" },
-              { id: "datacom", label: "Datacom DmOS", icon: "🔀" }
+              { id: "cisco", label: "Cisco IOS", desc: "860VAE" },
+              { id: "teldat", label: "Teldat CIT", desc: "RS123" },
+              { id: "datacom", label: "Datacom DmOS", desc: "SW1" }
             ].map((d) => (
               <button
                 key={d.id}
@@ -86,39 +119,38 @@ export function SandboxUI() {
                   e.stopPropagation();
                   handleDeviceChange(d.id);
                 }}
-                className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1 rounded text-xs font-semibold font-mono transition cursor-pointer ${
                   deviceType === d.id
-                    ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/20"
-                    : "text-gray-400 hover:text-white"
+                    ? "bg-slate-800 text-sky-400 border border-slate-700"
+                    : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                <span className="mr-1">{d.icon}</span>
                 {d.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* History Stream */}
-        <div className="flex-1 space-y-1">
-          <div className="text-xs text-gray-500 mb-3">
-            Simulador de consola interactivo. Ingresa comandos según el fabricante seleccionado ({deviceType.toUpperCase()}).
+        {/* Output Stream */}
+        <div className="flex-1 p-4 overflow-y-auto space-y-1 text-[13px] select-text">
+          <div className="text-xs text-slate-500 mb-3 border-b border-slate-800/60 pb-2">
+            Sesión de consola sin restricciones. Configura interfaces, VLANs, rutas y persistencia para auditar tu procedimiento.
           </div>
 
           {history.map((h, i) => (
-            <div key={i} className="text-sm leading-relaxed">
+            <div key={i} className="leading-snug">
               <div className="flex gap-2 items-center">
-                <span className="text-cyan-400 select-none font-bold">{h.prompt}</span>
-                <span className="text-white font-medium">{h.cmd}</span>
+                <span className="text-sky-400 font-semibold select-none">{h.prompt}</span>
+                <span className="text-slate-100">{h.cmd}</span>
                 {h.success && (
-                  <span className="text-emerald-400 text-xs ml-2 select-none font-semibold">[OK]</span>
+                  <span className="text-emerald-500 text-[11px] select-none font-semibold ml-1">✓</span>
                 )}
               </div>
               {h.output && (
                 <pre className={`text-xs ml-4 my-1 p-2 rounded whitespace-pre-wrap font-mono ${
                   h.success 
-                    ? "bg-gray-900/70 text-gray-300 border-l-2 border-cyan-500" 
-                    : "bg-rose-950/30 text-rose-400 border-l-2 border-rose-500"
+                    ? "bg-[#0b1322] text-slate-300 border-l-2 border-sky-500" 
+                    : "bg-[#1c0e14] text-rose-300 border-l-2 border-rose-500"
                 }`}>
                   {h.output}
                 </pre>
@@ -127,30 +159,30 @@ export function SandboxUI() {
           ))}
 
           {/* Active Input Line */}
-          <div className="flex items-center gap-2 mt-2 text-sm">
-            <span className="text-cyan-400 select-none font-bold whitespace-nowrap">
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-sky-400 font-semibold select-none whitespace-nowrap">
               {engine.getCurrentPrompt()}
             </span>
             <input
               ref={inputRef}
               autoFocus
-              className="flex-1 bg-transparent outline-none text-[#00ff88] font-mono caret-cyan-400 font-medium"
+              className="flex-1 bg-transparent outline-none text-slate-100 font-mono caret-sky-400"
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               spellCheck="false"
-              placeholder="escribe un comando libremente..."
+              placeholder="Introduce comandos (ej. configure terminal, * p 4, conf)..."
             />
           </div>
 
           <div ref={endRef} />
         </div>
 
-        {/* Action Bar */}
-        <div className="pt-3 mt-3 border-t border-gray-800/80 flex items-center justify-between text-xs">
-          <div className="text-gray-500">
-            {history.length} comandos emitidos en esta sesión
+        {/* Console Action Bar */}
+        <div className="px-4 py-2.5 bg-[#0b0f19] border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <div>
+            Total comandos emitidos: <span className="text-slate-200 font-mono font-semibold">{history.length}</span>
           </div>
           <div className="flex gap-2">
             <button
@@ -158,101 +190,101 @@ export function SandboxUI() {
                 e.stopPropagation();
                 handleClear();
               }}
-              className="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded border border-gray-700 transition cursor-pointer"
+              className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition cursor-pointer text-xs"
             >
-              Reiniciar Consola ⟲
+              Reiniciar Sesión
             </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 runAudit();
               }}
-              className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded shadow-md shadow-cyan-500/20 transition cursor-pointer"
+              className="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded transition cursor-pointer text-xs"
             >
-              Auditar Configuración ⚡
+              Auditar Configuración
             </button>
           </div>
         </div>
       </div>
 
-      {/* Dual Evaluation Sidebar */}
-      <aside className="w-96 bg-[#161b22] border-l border-gray-800 p-5 text-gray-200 flex flex-col gap-4 select-none overflow-y-auto rounded-xl">
-        <div>
+      {/* Audit & Compliance Panel */}
+      <aside className="w-96 bg-[#0c121e] border-l border-slate-800/80 p-5 text-slate-200 flex flex-col gap-4 select-none overflow-y-auto rounded-xl">
+        <div className="pb-2 border-b border-slate-800/80">
           <div className="flex items-center gap-2 mb-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-              Evaluación Doble
+            <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
+              Auditoría Técnica en Vivo
             </h3>
           </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Audita simultáneamente la <strong>sintaxis CLI</strong> y el <strong>orden lógico / buenas prácticas</strong> de tu configuración.
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Evaluación simultánea de validez sintáctica y coherencia del orden lógico de configuración.
           </p>
         </div>
 
-        {/* Score Card */}
+        {/* Audit Metrics */}
         {auditReport ? (
-          <div className="bg-[#0d1117] p-4 rounded-xl border border-gray-800 shadow-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-gray-400">Puntaje Metodológico:</span>
-              <span className={`text-xl font-bold font-mono ${
+          <div className="bg-[#070b14] p-4 rounded-lg border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-mono">Índice de Cumplimiento:</span>
+              <span className={`text-lg font-bold font-mono ${
                 auditReport.score >= 80 ? "text-emerald-400" : auditReport.score >= 50 ? "text-amber-400" : "text-rose-400"
               }`}>
                 {auditReport.score} / 100
               </span>
             </div>
 
-            <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden mb-3">
+            <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
               <div
-                className={`h-full transition-all duration-500 ${
-                  auditReport.score >= 80 ? "bg-emerald-400" : auditReport.score >= 50 ? "bg-amber-400" : "bg-rose-500"
+                className={`h-full transition-all duration-300 ${
+                  auditReport.score >= 80 ? "bg-emerald-500" : auditReport.score >= 50 ? "bg-amber-500" : "bg-rose-500"
                 }`}
                 style={{ width: `${auditReport.score}%` }}
               ></div>
             </div>
 
-            <div className="text-xs font-bold px-2.5 py-1 rounded text-center mb-3 bg-gray-800/80 border border-gray-700">
-              ESTADO: <span className="text-cyan-400">{auditReport.rating}</span>
+            <div className="text-[11px] font-mono px-2 py-1 rounded text-center bg-slate-800/60 border border-slate-700 text-slate-300">
+              Dictamen: <span className="text-sky-400 font-bold">{auditReport.rating}</span>
             </div>
 
-            {/* Error List */}
+            {/* Inconsistencies */}
             {auditReport.errors.length > 0 && (
-              <div className="mb-3 space-y-1.5">
-                <div className="text-xs font-bold text-rose-400 flex items-center gap-1">
-                  <span>❌</span>
-                  <span>Fallos de Orden Lógico:</span>
+              <div className="space-y-1.5 pt-1">
+                <div className="text-[11px] font-bold text-rose-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                  <span>Inconsistencias Lógicas:</span>
                 </div>
                 {auditReport.errors.map((err, idx) => (
-                  <div key={idx} className="text-[11px] p-2 rounded bg-rose-950/30 border border-rose-500/30 text-rose-300 leading-relaxed">
+                  <div key={idx} className="text-[11px] p-2 rounded bg-rose-950/20 border border-rose-800/40 text-rose-300 leading-relaxed font-mono">
                     {err}
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Warning List */}
+            {/* Warnings */}
             {auditReport.warnings.length > 0 && (
-              <div className="mb-3 space-y-1.5">
-                <div className="text-xs font-bold text-amber-400 flex items-center gap-1">
-                  <span>⚠️</span>
-                  <span>Observaciones y Buenas Prácticas:</span>
+              <div className="space-y-1.5 pt-1">
+                <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  <span>Observaciones de Arquitectura:</span>
                 </div>
                 {auditReport.warnings.map((warn, idx) => (
-                  <div key={idx} className="text-[11px] p-2 rounded bg-amber-950/30 border border-amber-500/30 text-amber-300 leading-relaxed">
+                  <div key={idx} className="text-[11px] p-2 rounded bg-amber-950/20 border border-amber-800/40 text-amber-300 leading-relaxed font-mono">
                     {warn}
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Achievements List */}
+            {/* Achievements */}
             {auditReport.achievements.length > 0 && (
-              <div className="space-y-1.5">
-                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                  <span>✅</span>
-                  <span>Aciertos Reconocidos:</span>
+              <div className="space-y-1.5 pt-1">
+                <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>Configuraciones Validadas:</span>
                 </div>
                 {auditReport.achievements.map((ach, idx) => (
-                  <div key={idx} className="text-[11px] p-2 rounded bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 leading-relaxed">
+                  <div key={idx} className="text-[11px] p-2 rounded bg-emerald-950/20 border border-emerald-800/40 text-emerald-300 leading-relaxed font-mono">
                     {ach}
                   </div>
                 ))}
@@ -260,47 +292,46 @@ export function SandboxUI() {
             )}
           </div>
         ) : (
-          <div className="bg-[#0d1117] p-4 rounded-xl border border-gray-800 text-center py-8">
-            <div className="text-2xl mb-2">⚡</div>
-            <p className="text-xs text-gray-400 mb-3">
-              Ingresa comandos en la consola o presiona el botón para auditar tu configuración actual.
+          <div className="bg-[#070b14] p-4 rounded-lg border border-slate-800 text-center py-6">
+            <p className="text-xs text-slate-400 mb-3 font-sans">
+              La consola auditará en tiempo real cada comando que emitas.
             </p>
             <button
               onClick={runAudit}
-              className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold text-xs rounded-lg shadow-md hover:from-cyan-500 hover:to-blue-500 transition cursor-pointer"
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded border border-slate-700 transition cursor-pointer"
             >
-              Auditar Ahora
+              Auditar Estado Actual
             </button>
           </div>
         )}
 
-        {/* Quick Cheatsheet by Device */}
-        <div className="mt-auto bg-[#0d1117] p-3.5 rounded-xl border border-gray-800 text-xs text-gray-400">
-          <div className="text-cyan-400 font-bold mb-1">
-            💡 Reglas Críticas para {deviceType.toUpperCase()}:
+        {/* Technical Directives Footer */}
+        <div className="mt-auto bg-[#070b14] p-3 rounded-lg border border-slate-800 text-xs text-slate-400">
+          <div className="text-slate-300 font-semibold mb-1 font-mono text-[11px]">
+            Criterios de Evaluación ({deviceType.toUpperCase()}):
           </div>
           {deviceType === "cisco" && (
-            <ul className="list-disc pl-4 space-y-1 text-[11px]">
-              <li>Siempre ejecuta <code>no shutdown</code> tras configurar la IP.</li>
-              <li>Protege el modo privilegiado con <code>enable secret</code>.</li>
-              <li>Crea la VLAN antes de asociarla al puerto de acceso.</li>
-              <li>Guarda en NVRAM con <code>write memory</code> o <code>wr</code>.</li>
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400 font-mono">
+              <li>IP asignada exige <code>no shutdown</code>.</li>
+              <li>Protección con <code>enable secret</code>.</li>
+              <li>VLAN creada antes de asignación.</li>
+              <li>Persistencia con <code>write memory</code>.</li>
             </ul>
           )}
           {deviceType === "teldat" && (
-            <ul className="list-disc pl-4 space-y-1 text-[11px]">
-              <li>Navega al Proceso 4 con <code>* p 4</code> para configurar.</li>
-              <li>Usa <code>save</code> para persistir en flash.</li>
-              <li><strong>¡OBLIGATORIO!</strong> Ejecuta <code>restart</code> para cargar en la RAM activa.</li>
-              <li>Audita en vivo en el Proceso 3 con <code>* p 3</code>.</li>
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400 font-mono">
+              <li>Proceso 4 (<code>* p 4</code>) para edición.</li>
+              <li>Guardado con <code>save</code>.</li>
+              <li><strong>Obligatorio:</strong> <code>restart</code> para activar en RAM.</li>
+              <li>Verificación en Proceso 3 (<code>* p 3</code>).</li>
             </ul>
           )}
           {deviceType === "datacom" && (
-            <ul className="list-disc pl-4 space-y-1 text-[11px]">
-              <li>Entra a configuración con <code>conf</code>.</li>
-              <li><strong>¡CRÍTICO!</strong> Remueve el puerto de VLAN 1 con <code>no set-member ethernet X/Y</code>.</li>
-              <li>Asigna membresía untagged o tagged en la VLAN de destino.</li>
-              <li>Guarda con <code>copy running-config startup-config</code>.</li>
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400 font-mono">
+              <li>Acceso global con <code>conf</code>.</li>
+              <li><strong>Obligatorio:</strong> <code>no set-member</code> en VLAN 1.</li>
+              <li>Membresía tagged/untagged según el rol.</li>
+              <li>Persistencia con <code>copy run start</code>.</li>
             </ul>
           )}
         </div>

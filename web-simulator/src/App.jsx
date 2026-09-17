@@ -9,10 +9,10 @@ import { NetworkTopology } from "./components/NetworkTopology";
 import { ExamConfigModal } from "./components/ExamConfigModal";
 
 const MODULE_KEYS = [
-  { key: "cisco", label: "Cisco 860VAE", icon: "🌐" },
-  { key: "teldat", label: "Teldat RS123", icon: "📟" },
-  { key: "datacom", label: "Datacom SW1/SW2", icon: "🔀" },
-  { key: "integrado", label: "Reto Integrado", icon: "⚡" }
+  { key: "cisco", label: "Cisco IOS", model: "860VAE" },
+  { key: "teldat", label: "Teldat CIT", model: "RS123" },
+  { key: "datacom", label: "Datacom DmOS", model: "SW1/SW2" },
+  { key: "integrado", label: "Integración L2/L3", model: "Punta a Punta" }
 ];
 
 export function App() {
@@ -20,7 +20,7 @@ export function App() {
   const [showTopology, setShowTopology] = useState(true);
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
 
-  // Dynamic Exam / IP Configuration State
+  // Dynamic Exam / Network Configuration State
   const [networkConfig, setNetworkConfig] = useState(PRESET_PROFILES[0].config);
 
   // Guided Mode State
@@ -32,7 +32,6 @@ export function App() {
   const currentChallengesList = challengesData[currentModuleKey] || [];
   const rawChallenge = currentChallengesList[currentChallengeIndex] || challengesData.cisco[0];
 
-  // Re-calculate active challenge based on dynamic IPs
   useEffect(() => {
     if (rawChallenge) {
       const dynamicChallenge = applyNetworkConfigToChallenge(rawChallenge, networkConfig);
@@ -85,61 +84,62 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0d1117] text-gray-100 overflow-hidden font-sans">
-      {/* Top Header Bar */}
-      <header className="bg-[#161b22] border-b border-gray-800 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 select-none shadow-md z-10">
+    <div className="flex flex-col h-screen bg-[#070b14] text-slate-100 overflow-hidden font-sans select-none">
+      {/* Enterprise Header Bar */}
+      <header className="bg-[#0b101d] border-b border-slate-800 px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 shadow-sm z-10">
+        {/* Brand & Lab Title */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-600 border border-cyan-400/40 flex items-center justify-center text-white font-bold text-sm shadow-inner">
-            CLI
+          <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-sky-400 font-mono font-bold text-xs shadow-inner">
+            NET
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
-              Simulador CLI de Redes Multimarca
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                v5.8 Exam Ready
+            <h1 className="text-xs font-bold text-slate-100 tracking-wider uppercase font-mono flex items-center gap-2">
+              Laboratorio CLI de Redes Multimarca
+              <span className="text-[10px] font-semibold px-2 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700 font-mono">
+                Edición Evaluación
               </span>
             </h1>
-            <p className="text-[11px] text-gray-400">Cisco IOS · Teldat CIT · Datacom DmOS</p>
+            <p className="text-[11px] text-slate-400 font-sans">
+              Cisco IOS (ISR) · Teldat CIT · Datacom DmOS (Carrier L2)
+            </p>
           </div>
         </div>
 
-        {/* Global Mode Switch: Guided vs Sandbox */}
-        <div className="flex items-center bg-[#090d13] p-1 rounded-xl border border-gray-800 shadow-inner">
+        {/* Mode Selector Segmented Control */}
+        <div className="flex items-center bg-[#070b14] p-1 rounded-lg border border-slate-800">
           <button
             onClick={() => setAppMode("guided")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded text-xs font-semibold transition cursor-pointer ${
               appMode === "guided"
-                ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-500/20"
-                : "text-gray-400 hover:text-white"
+                ? "bg-slate-800 text-slate-100 shadow-sm border border-slate-700"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <span>🎯</span>
-            <span>Retos Guiados</span>
+            Retos de Evaluación
           </button>
           <button
             onClick={() => setAppMode("sandbox")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded text-xs font-semibold transition cursor-pointer ${
               appMode === "sandbox"
-                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20"
-                : "text-gray-400 hover:text-white"
+                ? "bg-slate-800 text-sky-400 shadow-sm border border-slate-700"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <span>⚡</span>
-            <span>Modo Libre (Sandbox)</span>
+            Consola Libre & Auditoría
           </button>
         </div>
 
-        {/* Exam IP Config Button & Controls */}
+        {/* Actions & Exam Parameters */}
         <div className="flex items-center gap-2.5">
           {/* IP Parameters / Exam Settings Button */}
           <button
             onClick={() => setIsExamModalOpen(true)}
-            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-cyan-500/10 to-blue-500/10 hover:from-cyan-500/20 hover:to-blue-500/20 text-cyan-300 border border-cyan-500/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-            title="Configurar direcciones IP y subredes para el examen"
+            className="px-3 py-1.5 rounded bg-[#070b14] hover:bg-slate-800 text-slate-300 border border-slate-700/90 text-xs font-semibold transition cursor-pointer flex items-center gap-2 shadow-sm"
+            title="Ajustar direcciones IP y subredes para el examen o práctica"
           >
-            <span>🎯</span>
-            <span>IPs del Examen</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-400/20 text-cyan-300 font-mono">
+            <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+            <span>Parámetros de Red</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
               {networkConfig.ciscoLanNet}
             </span>
           </button>
@@ -147,34 +147,32 @@ export function App() {
           {/* Topology Toggle */}
           <button
             onClick={() => setShowTopology(!showTopology)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded text-xs font-semibold border transition cursor-pointer ${
               showTopology
-                ? "bg-cyan-950/40 text-cyan-400 border-cyan-500/40"
-                : "bg-gray-800 text-gray-400 border-gray-700 hover:text-white"
+                ? "bg-slate-800 text-sky-400 border-slate-700"
+                : "bg-[#070b14] text-slate-400 border-slate-800 hover:text-slate-200"
             }`}
-            title="Alternar vista de topología de red"
+            title="Alternar visibilidad del mapa de topología"
           >
-            <span>🗺️</span>
-            <span>{showTopology ? "Ocultar Mapa" : "Ver Mapa"}</span>
+            {showTopology ? "Ocultar Topología" : "Ver Topología"}
           </button>
 
-          {/* Module Selector (in Guided mode) */}
+          {/* Module Selector in Guided Mode */}
           {appMode === "guided" && (
-            <div className="flex items-center gap-1 bg-[#090d13] p-1 rounded-xl border border-gray-800">
+            <div className="flex items-center gap-1 bg-[#070b14] p-1 rounded-lg border border-slate-800">
               {MODULE_KEYS.map((mod) => {
                 const isActive = currentModuleKey === mod.key;
                 return (
                   <button
                     key={mod.key}
                     onClick={() => handleSelectModule(mod.key)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                    className={`px-2.5 py-1 rounded text-xs font-medium transition cursor-pointer font-mono ${
                       isActive
-                        ? "bg-gray-800 text-cyan-400 border border-cyan-500/40 font-bold"
-                        : "text-gray-400 hover:text-gray-200"
+                        ? "bg-slate-800 text-slate-100 border border-slate-700 font-semibold"
+                        : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
-                    <span>{mod.icon}</span>
-                    <span className="hidden sm:inline">{mod.label}</span>
+                    <span>{mod.label}</span>
                   </button>
                 );
               })}
@@ -183,9 +181,9 @@ export function App() {
         </div>
       </header>
 
-      {/* Main Container */}
+      {/* Main Content Workspace */}
       <div className="flex-1 p-4 flex flex-col overflow-hidden">
-        {/* Collapsible Topology Diagram with Dynamic Network Config */}
+        {/* Interactive Network Topology Diagram */}
         {showTopology && (
           <NetworkTopology
             activeDevice={appMode === "guided" ? currentModuleKey : null}
@@ -198,24 +196,25 @@ export function App() {
         {appMode === "sandbox" ? (
           <SandboxUI />
         ) : (
-          <div className="flex flex-1 gap-5 overflow-hidden">
-            {/* Guided Terminal Area */}
+          <div className="flex flex-1 gap-4 overflow-hidden">
+            {/* Guided Terminal Workspace */}
             <main className="flex-1 flex flex-col min-w-0">
-              {/* Level selector pills */}
+              {/* Level selector pills bar */}
               <div className="mb-2 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-gray-400 font-semibold mr-1">Niveles disponibles:</span>
+                  <span className="text-slate-400 font-medium mr-1 font-mono text-[11px]">Desafíos del Módulo:</span>
                   {currentChallengesList.map((ch, idx) => {
                     const isCurrent = idx === currentChallengeIndex;
                     return (
                       <button
                         key={ch.id}
                         onClick={() => handleSelectChallenge(idx)}
-                        className={`px-2.5 py-1 rounded text-xs font-bold transition cursor-pointer ${
+                        className={`px-2.5 py-1 rounded text-xs font-mono font-semibold transition cursor-pointer ${
                           isCurrent
-                            ? "bg-cyan-500 text-black shadow-md shadow-cyan-500/30"
-                            : "bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700"
+                            ? "bg-sky-600 text-white shadow-sm"
+                            : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                         }`}
+                        title={ch.title}
                       >
                         {ch.id}
                       </button>
@@ -223,13 +222,13 @@ export function App() {
                   })}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="text-[11px] text-gray-400 font-mono">
-                    LAN: <span className="text-cyan-300 font-bold">{networkConfig.ciscoLanGw}</span> | WAN: <span className="text-amber-300 font-bold">{networkConfig.wanTeldatIp}</span>
+                <div className="flex items-center gap-3">
+                  <div className="text-[11px] text-slate-400 font-mono hidden md:block">
+                    LAN 1: <span className="text-slate-200 font-semibold">{networkConfig.ciscoLanGw}</span> | WAN: <span className="text-slate-200 font-semibold">{networkConfig.wanTeldatIp}</span>
                   </div>
                   <button
                     onClick={handleNextChallenge}
-                    className="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 rounded font-bold text-xs transition cursor-pointer flex items-center gap-1"
+                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded text-xs font-medium transition cursor-pointer flex items-center gap-1"
                   >
                     <span>Siguiente Nivel</span>
                     <span>➔</span>
@@ -247,7 +246,7 @@ export function App() {
               )}
             </main>
 
-            {/* Expert Sidebar */}
+            {/* Technical Specification & Evaluation Sidebar */}
             {engine && (
               <ExpertPanel
                 engine={engine}
@@ -259,7 +258,7 @@ export function App() {
         )}
       </div>
 
-      {/* Exam IP Configuration Modal */}
+      {/* Network & Exam Configuration Dialog */}
       <ExamConfigModal
         isOpen={isExamModalOpen}
         onClose={() => setIsExamModalOpen(false)}

@@ -3,12 +3,17 @@ import React, { useState, useRef, useEffect } from "react";
 export function TerminalUI({ engine, onCommand, onNextChallenge, onRestartChallenge }) {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState([]);
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+
   const endRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Reset local history whenever the active challenge changes
+  // Reset local state when challenge changes
   useEffect(() => {
     setHistory([]);
+    setCommandHistory([]);
+    setHistoryIndex(-1);
     setInput("");
     if (inputRef.current) {
       inputRef.current.focus();
@@ -16,6 +21,30 @@ export function TerminalUI({ engine, onCommand, onNextChallenge, onRestartChalle
   }, [engine?.challenge?.id]);
 
   const handleKeyDown = (e) => {
+    // Arrow Up / Down command history traversal (Real CLI behavior)
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (commandHistory.length === 0) return;
+      const nextIdx = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
+      setHistoryIndex(nextIdx);
+      setInput(commandHistory[nextIdx]);
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (historyIndex === -1) return;
+      const nextIdx = historyIndex + 1;
+      if (nextIdx >= commandHistory.length) {
+        setHistoryIndex(-1);
+        setInput("");
+      } else {
+        setHistoryIndex(nextIdx);
+        setInput(commandHistory[nextIdx]);
+      }
+      return;
+    }
+
     if (e.key === "Enter" && input.trim() !== "") {
       const currentPrompt = engine.getCurrentPrompt();
       const result = engine.processCommand(input);
@@ -24,8 +53,10 @@ export function TerminalUI({ engine, onCommand, onNextChallenge, onRestartChalle
         ...prev,
         { prompt: currentPrompt, cmd: input, ...result }
       ]);
+      setCommandHistory((prev) => [...prev, input]);
+      setHistoryIndex(-1);
       setInput("");
-      onCommand(); // notify parent
+      onCommand();
     }
   };
 
@@ -35,107 +66,138 @@ export function TerminalUI({ engine, onCommand, onNextChallenge, onRestartChalle
 
   const challenge = engine?.challenge;
 
+  const handleClearTerminal = (e) => {
+    e.stopPropagation();
+    setHistory([]);
+    if (inputRef.current) inputRef.current.focus();
+  };
+
   return (
     <div 
-      className="flex-1 bg-[#090d13] text-[#00ff88] p-5 font-mono overflow-y-auto rounded-xl border border-gray-800/90 shadow-2xl flex flex-col cursor-text"
+      className="flex-1 bg-[#050811] text-slate-100 rounded-xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden cursor-text font-mono"
       onClick={() => inputRef.current?.focus()}
     >
-      {/* Terminal Header Banner */}
-      <div className="mb-4 pb-3 border-b border-gray-800/60 text-xs text-gray-400 select-none">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-gray-300 font-semibold">CONEXIÓN SERIAL ESTABLECIDA</span>
+      {/* Professional Terminal Window Header */}
+      <div className="bg-[#0b0f19] px-4 py-2.5 border-b border-slate-800 flex items-center justify-between text-xs select-none">
+        <div className="flex items-center gap-3">
+          {/* Mac / Terminal Window Buttons */}
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-700"></span>
           </div>
-          <span className="text-cyan-400 font-mono">[{challenge?.id}] {challenge?.module}</span>
+
+          <div className="flex items-center gap-2 font-mono text-slate-400">
+            <span className="text-sky-400 font-semibold">{challenge?.module || "Consola Serial"}</span>
+            <span className="text-slate-600">/</span>
+            <span className="text-slate-300">ttyS0 · 115200 8-N-1 · VT100</span>
+          </div>
         </div>
-        <div className="mt-1 text-gray-300 font-semibold text-sm">
-          {challenge?.title}
-        </div>
-        <div className="mt-0.5 text-gray-400 text-xs">
-          {challenge?.description}
-        </div>
-        <div className="mt-2 text-gray-500">
-          Tip: Escribe los comandos en la consola o usa abreviaturas estándar como <code className="text-cyan-300 font-bold">conf t</code>, <code className="text-cyan-300 font-bold">int fa0</code>, <code className="text-cyan-300 font-bold">wr</code>, etc.
+
+        <div className="flex items-center gap-3">
+          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px]">
+            Nivel: {challenge?.id}
+          </span>
+          <button
+            onClick={handleClearTerminal}
+            className="text-[11px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded hover:bg-slate-800 transition cursor-pointer"
+            title="Limpiar buffer de la terminal"
+          >
+            Limpiar pantalla
+          </button>
         </div>
       </div>
 
-      {/* History Log */}
-      <div className="flex-1 space-y-1">
+      {/* Terminal Output Area */}
+      <div className="flex-1 p-4 overflow-y-auto space-y-1 text-[13px] leading-relaxed select-text">
+        {/* Connection banner */}
+        <div className="mb-4 pb-3 border-b border-slate-800/60 text-xs text-slate-400 select-none">
+          <p className="text-slate-200 font-semibold font-sans mb-1 text-sm">
+            {challenge?.title}
+          </p>
+          <p className="text-slate-400 font-sans text-xs mb-2">
+            {challenge?.description}
+          </p>
+          <p className="text-[11px] text-slate-500 font-mono">
+            Soporta atajos de consola de red estándar (ej. <span className="text-slate-300 font-semibold">conf t</span>, <span className="text-slate-300 font-semibold">int fa0</span>, <span className="text-slate-300 font-semibold">wr</span>, <span className="text-slate-300 font-semibold">p 4</span>). Usa <span className="text-slate-300 font-semibold">↑ / ↓</span> para historial.
+          </p>
+        </div>
+
+        {/* Command stream */}
         {history.map((h, i) => (
-          <div key={i} className="text-sm leading-relaxed">
+          <div key={i} className="leading-snug">
             <div className="flex gap-2 items-center">
-              <span className="text-cyan-400 select-none font-bold">{h.prompt}</span>
-              <span className="text-white font-medium">{h.cmd}</span>
+              <span className="text-sky-400 font-semibold select-none">{h.prompt}</span>
+              <span className="text-slate-100">{h.cmd}</span>
               {h.success && (
-                <span className="text-emerald-400 text-xs ml-2 select-none font-semibold">[OK]</span>
+                <span className="text-emerald-500 text-[11px] font-mono select-none font-semibold ml-1">✓</span>
               )}
             </div>
             {h.output && (
-              <div className="text-rose-400 text-xs ml-4 my-1 select-none font-sans font-medium bg-rose-950/30 border-l-2 border-rose-500 px-2 py-0.5 rounded">
+              <div className="text-rose-400 text-xs ml-4 my-1 font-mono">
                 {h.output}
               </div>
             )}
           </div>
         ))}
 
-        {/* Input Prompt (when active) */}
+        {/* Input prompt */}
         {!engine.isCompleted && (
-          <div className="flex items-center gap-2 mt-2 text-sm">
-            <span className="text-cyan-400 select-none font-bold whitespace-nowrap">
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-sky-400 font-semibold select-none whitespace-nowrap">
               {engine.getCurrentPrompt()}
             </span>
             <input
               ref={inputRef}
               autoFocus
-              className="flex-1 bg-transparent outline-none text-[#00ff88] font-mono caret-cyan-400 font-medium"
+              className="flex-1 bg-transparent outline-none text-slate-100 font-mono caret-sky-400"
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               spellCheck="false"
-              placeholder="escribe un comando..."
+              autoComplete="off"
             />
           </div>
         )}
 
-        {/* Completion Card */}
+        {/* Formal Lab Completion Card */}
         {engine.isCompleted && (
-          <div className="mt-6 p-5 rounded-xl bg-gradient-to-r from-emerald-950/60 via-gray-900 to-cyan-950/60 border border-emerald-500/40 shadow-xl select-none animate-fadeIn">
-            <div className="flex items-center gap-3">
-              <div className="text-3xl">🏆</div>
+          <div className="mt-5 p-4 rounded-lg bg-[#0b1322] border border-slate-700/80 shadow-lg select-none">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-emerald-400 font-bold text-base tracking-wide">
-                  ¡RETO COMPLETADO CON ÉXITO!
-                </h3>
-                <p className="text-xs text-gray-300 mt-0.5">
-                  Has completado todos los pasos requeridos para este nivel.
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <h4 className="text-sm font-semibold text-slate-100 font-sans tracking-wide">
+                    Desafío Completado Correctamente
+                  </h4>
+                </div>
+                <p className="text-xs text-slate-400 font-sans mt-1">
+                  Se validaron todos los parámetros y estados de configuración requeridos para este nivel.
                 </p>
               </div>
-            </div>
 
-            <div className="mt-4 flex items-center gap-3">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNextChallenge();
-                }}
-                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-gray-950 font-bold text-sm rounded-lg shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all cursor-pointer flex items-center gap-2 transform active:scale-95"
-              >
-                <span>Pasar al Siguiente Nivel</span>
-                <span className="text-base">➔</span>
-              </button>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRestartChallenge();
-                }}
-                className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-xs rounded-lg border border-gray-700 transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <span>⟲</span>
-                <span>Reintentar este Reto</span>
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRestartChallenge();
+                  }}
+                  className="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition cursor-pointer border border-slate-700"
+                >
+                  Reiniciar Desafío
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onNextChallenge();
+                  }}
+                  className="px-4 py-1.5 rounded bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-sm transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>Siguiente Nivel</span>
+                  <span>➔</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
