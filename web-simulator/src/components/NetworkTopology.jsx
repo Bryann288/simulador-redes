@@ -1,14 +1,26 @@
 import React, { useState } from "react";
 
-export function NetworkTopology({ activeDevice, onSelectDevice }) {
+export function NetworkTopology({ activeDevice, onSelectDevice, networkConfig }) {
   const [selectedNode, setSelectedNode] = useState(null);
+
+  const cfg = networkConfig || {
+    ciscoVlan: 100,
+    teldatVlan: 200,
+    ciscoLanGw: "192.168.100.1",
+    ciscoPcIp: "192.168.100.10/24",
+    teldatLanGw: "192.168.200.1",
+    teldatPcIp: "192.168.200.10/24",
+    wanNet: "10.0.12.0",
+    wanCiscoIp: "10.0.12.1",
+    wanTeldatIp: "10.0.12.2"
+  };
 
   const nodes = [
     {
       id: "pc1",
       label: "PC 1 (LAN Cisco)",
       type: "host",
-      ip: "192.168.100.10/24",
+      ip: cfg.ciscoPcIp,
       x: 60,
       y: 90,
       icon: "💻"
@@ -19,7 +31,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice }) {
       label: "Datacom SW1",
       type: "switch",
       vendor: "Datacom DmOS",
-      ip: "VLAN 100 / L2",
+      ip: `VLAN ${cfg.ciscoVlan} / L2`,
       x: 210,
       y: 90,
       icon: "🔀"
@@ -30,7 +42,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice }) {
       label: "Cisco 860VAE",
       type: "router",
       vendor: "Cisco IOS",
-      ip: "LAN: .100.1 | WAN: 10.0.12.1",
+      ip: `LAN: ${cfg.ciscoLanGw} | WAN: ${cfg.wanCiscoIp}`,
       x: 390,
       y: 90,
       icon: "🌐"
@@ -41,7 +53,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice }) {
       label: "Teldat RS123",
       type: "router",
       vendor: "Teldat CIT",
-      ip: "WAN: 10.0.12.2 | LAN: .200.1",
+      ip: `WAN: ${cfg.wanTeldatIp} | LAN: ${cfg.teldatLanGw}`,
       x: 570,
       y: 90,
       icon: "📟"
@@ -52,7 +64,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice }) {
       label: "Datacom SW2",
       type: "switch",
       vendor: "Datacom DmOS",
-      ip: "VLAN 200 / L2",
+      ip: `VLAN ${cfg.teldatVlan} / L2`,
       x: 750,
       y: 90,
       icon: "🔀"
@@ -61,7 +73,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice }) {
       id: "pc2",
       label: "PC 2 (LAN Teldat)",
       type: "host",
-      ip: "192.168.200.10/24",
+      ip: cfg.teldatPcIp,
       x: 900,
       y: 90,
       icon: "💻"
@@ -69,11 +81,11 @@ export function NetworkTopology({ activeDevice, onSelectDevice }) {
   ];
 
   const links = [
-    { from: 60, to: 210, label: "VLAN 100 Acceso" },
-    { from: 210, to: 390, label: "Troncal Tagged 100" },
-    { from: 390, to: 570, label: "10.0.12.0/30 (WAN)", isWan: true },
-    { from: 570, to: 750, label: "802.1Q Subif .200" },
-    { from: 750, to: 900, label: "VLAN 200 Acceso" }
+    { from: 60, to: 210, label: `VLAN ${cfg.ciscoVlan} Acceso` },
+    { from: 210, to: 390, label: `Troncal Tagged ${cfg.ciscoVlan}` },
+    { from: 390, to: 570, label: `${cfg.wanNet}/30 (WAN)`, isWan: true },
+    { from: 570, to: 750, label: `802.1Q Subif .${cfg.teldatVlan}` },
+    { from: 750, to: 900, label: `VLAN ${cfg.teldatVlan} Acceso` }
   ];
 
   return (
@@ -82,7 +94,7 @@ export function NetworkTopology({ activeDevice, onSelectDevice }) {
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
           <h3 className="text-xs font-bold text-gray-200 uppercase tracking-wider">
-            Topología Multimarca en Tiempo Real (Punta a Punta)
+            Topología Multimarca en Tiempo Real (Parámetros Dinámicos)
           </h3>
         </div>
         <span className="text-[11px] text-gray-400">

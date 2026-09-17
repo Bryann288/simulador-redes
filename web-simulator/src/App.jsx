@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import challengesData from "./data/challenges.json";
 import { SimulatorEngine } from "./core/SimulatorEngine";
+import { PRESET_PROFILES, applyNetworkConfigToChallenge } from "./core/NetworkConfigManager";
 import { TerminalUI } from "./components/TerminalUI";
 import { ExpertPanel } from "./components/ExpertPanel";
 import { SandboxUI } from "./components/SandboxUI";
 import { NetworkTopology } from "./components/NetworkTopology";
+import { ExamConfigModal } from "./components/ExamConfigModal";
 
 const MODULE_KEYS = [
   { key: "cisco", label: "Cisco 860VAE", icon: "🌐" },
@@ -16,6 +18,10 @@ const MODULE_KEYS = [
 export function App() {
   const [appMode, setAppMode] = useState("guided"); // 'guided' | 'sandbox'
   const [showTopology, setShowTopology] = useState(true);
+  const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+
+  // Dynamic Exam / IP Configuration State
+  const [networkConfig, setNetworkConfig] = useState(PRESET_PROFILES[0].config);
 
   // Guided Mode State
   const [currentModuleKey, setCurrentModuleKey] = useState("cisco");
@@ -24,13 +30,15 @@ export function App() {
   const [updateTick, setUpdateTick] = useState(0);
 
   const currentChallengesList = challengesData[currentModuleKey] || [];
-  const activeChallenge = currentChallengesList[currentChallengeIndex] || challengesData.cisco[0];
+  const rawChallenge = currentChallengesList[currentChallengeIndex] || challengesData.cisco[0];
 
+  // Re-calculate active challenge based on dynamic IPs
   useEffect(() => {
-    if (activeChallenge) {
-      setEngine(new SimulatorEngine(activeChallenge));
+    if (rawChallenge) {
+      const dynamicChallenge = applyNetworkConfigToChallenge(rawChallenge, networkConfig);
+      setEngine(new SimulatorEngine(dynamicChallenge));
     }
-  }, [currentModuleKey, currentChallengeIndex]);
+  }, [currentModuleKey, currentChallengeIndex, networkConfig]);
 
   const handleCommandExecuted = () => {
     setUpdateTick(tick => tick + 1);
@@ -46,8 +54,9 @@ export function App() {
   };
 
   const handleRestartChallenge = () => {
-    if (activeChallenge) {
-      setEngine(new SimulatorEngine(activeChallenge));
+    if (rawChallenge) {
+      const dynamicChallenge = applyNetworkConfigToChallenge(rawChallenge, networkConfig);
+      setEngine(new SimulatorEngine(dynamicChallenge));
       setUpdateTick(tick => tick + 1);
     }
   };
@@ -87,7 +96,7 @@ export function App() {
             <h1 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
               Simulador CLI de Redes Multimarca
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                v5.5 Pro
+                v5.8 Exam Ready
               </span>
             </h1>
             <p className="text-[11px] text-gray-400">Cisco IOS · Teldat CIT · Datacom DmOS</p>
@@ -120,8 +129,22 @@ export function App() {
           </button>
         </div>
 
-        {/* Topology Toggle & Guided Navigation */}
-        <div className="flex items-center gap-3">
+        {/* Exam IP Config Button & Controls */}
+        <div className="flex items-center gap-2.5">
+          {/* IP Parameters / Exam Settings Button */}
+          <button
+            onClick={() => setIsExamModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-cyan-500/10 to-blue-500/10 hover:from-cyan-500/20 hover:to-blue-500/20 text-cyan-300 border border-cyan-500/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+            title="Configurar direcciones IP y subredes para el examen"
+          >
+            <span>🎯</span>
+            <span>IPs del Examen</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-400/20 text-cyan-300 font-mono">
+              {networkConfig.ciscoLanNet}
+            </span>
+          </button>
+
+          {/* Topology Toggle */}
           <button
             onClick={() => setShowTopology(!showTopology)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -132,11 +155,12 @@ export function App() {
             title="Alternar vista de topología de red"
           >
             <span>🗺️</span>
-            <span>{showTopology ? "Ocultar Topología" : "Ver Topología"}</span>
+            <span>{showTopology ? "Ocultar Mapa" : "Ver Mapa"}</span>
           </button>
 
+          {/* Module Selector (in Guided mode) */}
           {appMode === "guided" && (
-            <div className="flex items-center gap-1.5 bg-[#090d13] p-1 rounded-xl border border-gray-800">
+            <div className="flex items-center gap-1 bg-[#090d13] p-1 rounded-xl border border-gray-800">
               {MODULE_KEYS.map((mod) => {
                 const isActive = currentModuleKey === mod.key;
                 return (
@@ -161,11 +185,12 @@ export function App() {
 
       {/* Main Container */}
       <div className="flex-1 p-4 flex flex-col overflow-hidden">
-        {/* Collapsible Topology Diagram */}
+        {/* Collapsible Topology Diagram with Dynamic Network Config */}
         {showTopology && (
           <NetworkTopology
             activeDevice={appMode === "guided" ? currentModuleKey : null}
             onSelectDevice={handleDeviceSelectedFromTopology}
+            networkConfig={networkConfig}
           />
         )}
 
@@ -198,13 +223,18 @@ export function App() {
                   })}
                 </div>
 
-                <button
-                  onClick={handleNextChallenge}
-                  className="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 rounded font-bold text-xs transition cursor-pointer flex items-center gap-1"
-                >
-                  <span>Siguiente Nivel</span>
-                  <span>➔</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <div className="text-[11px] text-gray-400 font-mono">
+                    LAN: <span className="text-cyan-300 font-bold">{networkConfig.ciscoLanGw}</span> | WAN: <span className="text-amber-300 font-bold">{networkConfig.wanTeldatIp}</span>
+                  </div>
+                  <button
+                    onClick={handleNextChallenge}
+                    className="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/40 rounded font-bold text-xs transition cursor-pointer flex items-center gap-1"
+                  >
+                    <span>Siguiente Nivel</span>
+                    <span>➔</span>
+                  </button>
+                </div>
               </div>
 
               {engine && (
@@ -228,6 +258,14 @@ export function App() {
           </div>
         )}
       </div>
+
+      {/* Exam IP Configuration Modal */}
+      <ExamConfigModal
+        isOpen={isExamModalOpen}
+        onClose={() => setIsExamModalOpen(false)}
+        activeConfig={networkConfig}
+        onApplyConfig={(newCfg) => setNetworkConfig(newCfg)}
+      />
     </div>
   );
 }
