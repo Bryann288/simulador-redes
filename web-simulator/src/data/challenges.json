@@ -1,0 +1,366 @@
+{
+  "cisco": [
+    {
+      "id": "C1",
+      "module": "Cisco 860VAE",
+      "title": "C1: Configuración Básica e Identificación",
+      "description": "Accede a modo privilegiado, entra a configuración global, cambia el nombre del equipo a 'CISCO_AS100', configura la clave de enable 'cisco123' y guarda en NVRAM.",
+      "steps": [
+        {
+          "prompt": "CISCO>",
+          "valid_commands": ["enable", "ena", "en"],
+          "hint": "Ingresa a modo privilegiado con 'enable'.",
+          "explanation": "Modo Usuario '>' permite consultas limitadas; el modo privilegiado '#' permite cambios administrativos."
+        },
+        {
+          "prompt": "CISCO#",
+          "valid_commands": ["configure terminal", "conf t", "config t", "conf term"],
+          "hint": "Entra a configuración global con 'configure terminal'.",
+          "explanation": "'configure terminal' permite modificar los parámetros del sistema en la memoria RAM activa (running-config)."
+        },
+        {
+          "prompt": "CISCO(config)#",
+          "valid_commands": ["hostname CISCO_AS100", "hostname cisco_as100", "host CISCO_AS100", "host cisco_as100"],
+          "hint": "Personaliza el nombre con 'hostname CISCO_AS100'.",
+          "explanation": "Identifica al equipo unívocamente en auditorías y logs de la red."
+        },
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": ["enable secret cisco123"],
+          "hint": "Protege el acceso privilegiado con 'enable secret cisco123'.",
+          "explanation": "'enable secret' cifra la clave usando hashing robusto en lugar de texto plano."
+        },
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": ["end", "wr", "write memory", "copy run start", "copy running-config startup-config"],
+          "hint": "Guarda la configuración en NVRAM con 'write memory' o 'wr'.",
+          "explanation": "'write memory' guarda los cambios en la NVRAM para que persistan tras un reinicio."
+        }
+      ]
+    },
+    {
+      "id": "C2",
+      "module": "Cisco 860VAE",
+      "title": "C2: Capa 2/3 LAN y Asignación de IP en SVI",
+      "description": "Crea la VLAN 100, configura la SVI con IP 192.168.100.1/24, enciéndela y asigna el puerto FastEthernet0 en modo acceso a dicha VLAN.",
+      "steps": [
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": ["vlan 100"],
+          "hint": "Crea la VLAN local con 'vlan 100'.",
+          "explanation": "Separa el dominio de difusión de la red LAN local."
+        },
+        {
+          "prompt": "CISCO_AS100(config-vlan)#",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal del menú VLAN con 'exit'.",
+          "explanation": "Regresa a configuración global."
+        },
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": ["interface Vlan100", "int vlan100", "interface vlan 100", "int vlan 100"],
+          "hint": "Entra a la SVI con 'interface Vlan100'.",
+          "explanation": "En routers/switches ISR la SVI es la interfaz lógica de Capa 3 para la VLAN."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["ip address 192.168.100.1 255.255.255.0", "ip addr 192.168.100.1 255.255.255.0"],
+          "hint": "Asigna IP 192.168.100.1 255.255.255.0.",
+          "explanation": "Define el Gateway predeterminado de la subred LAN."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["no shutdown", "no sh", "no shut"],
+          "hint": "Activa la SVI con 'no shutdown'.",
+          "explanation": "Pone el estado administrativo de la interfaz L3 en UP."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal a configuración global con 'exit'.",
+          "explanation": "Permite seleccionar luego el puerto físico L2."
+        },
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": ["interface FastEthernet0", "int fa0", "int fa 0", "interface fa0"],
+          "hint": "Selecciona el puerto físico con 'interface FastEthernet0'.",
+          "explanation": "Configura el puerto L2 de acceso hacia la estación de trabajo PC1."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["switchport mode access", "sw mo acc"],
+          "hint": "Pon el puerto en acceso con 'switchport mode access'.",
+          "explanation": "El modo de acceso entrega y recibe tramas ethernet sin etiquetar (untagged)."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["switchport access vlan 100", "sw acc vl 100"],
+          "hint": "Asocia la VLAN con 'switchport access vlan 100'.",
+          "explanation": "Asocia este puerto de acceso con la VLAN 100 creada previamente."
+        },
+        {
+          "prompt": "CISCO_AS100(config-if)#",
+          "valid_commands": ["no shutdown", "no sh", "no shut"],
+          "hint": "Habilita el puerto físico con 'no shutdown'.",
+          "explanation": "Activa la interfaz física en estado UP/UP."
+        }
+      ]
+    },
+    {
+      "id": "C3",
+      "module": "Cisco 860VAE",
+      "title": "C3: Las 3 Variantes de Enrutamiento Estático WAN",
+      "description": "Configura la variante 1 (Siguiente Salto 10.0.12.2), la variante 2 (Interfaz Vlan1) y la variante 3 (Ruta Flotante con AD 130).",
+      "steps": [
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": ["ip route 192.168.200.0 255.255.255.0 10.0.12.2"],
+          "hint": "Variante 1 (Next-Hop): ip route 192.168.200.0 255.255.255.0 10.0.12.2",
+          "explanation": "Next-Hop: ideal en medios multiacceso Ethernet porque resuelve ARP para la IP del salto."
+        },
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": ["ip route 192.168.200.0 255.255.255.0 Vlan1", "ip route 192.168.200.0 255.255.255.0 vlan1", "ip route 192.168.200.0 255.255.255.0 vlan 1"],
+          "hint": "Variante 2 (Interfaz Salida): ip route 192.168.200.0 255.255.255.0 Vlan1",
+          "explanation": "Directamente conectada: envía paquetes hacia la interfaz especificada."
+        },
+        {
+          "prompt": "CISCO_AS100(config)#",
+          "valid_commands": ["ip route 192.168.200.0 255.255.255.0 Vlan1 10.0.12.2 130", "ip route 192.168.200.0 255.255.255.0 vlan1 10.0.12.2 130", "ip route 192.168.200.0 255.255.255.0 vlan 1 10.0.12.2 130"],
+          "hint": "Variante 3 (Flotante/Respaldo): ip route 192.168.200.0 255.255.255.0 Vlan1 10.0.12.2 130",
+          "explanation": "Distancia Administrativa 130: Permanece inactiva en reserva hasta que la ruta principal falla."
+        }
+      ]
+    }
+  ],
+  "teldat": [
+    {
+      "id": "T1",
+      "module": "Teldat RS123",
+      "title": "T1: Consola, Parámetros y Navegación de Procesos",
+      "description": "Verifica el entorno Teldat CIT, ingresa al Proceso 4 de configuración (* p 4), asigna el nombre 'TELDAT_AS200' y navega al Proceso 3 de monitorización.",
+      "steps": [
+        {
+          "prompt": "*",
+          "valid_commands": ["* p 4", "p 4", "*p 4", "proc 4"],
+          "hint": "Ingresa al Proceso 4 de Configuración con '* p 4'.",
+          "explanation": "Proceso 4 (CIT): Entorno para creación y ajuste de interfaces, IPs y enrutamiento."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["system"],
+          "hint": "Entra a configuración del sistema con 'system'.",
+          "explanation": "Administra parámetros de identificación y globales del equipo."
+        },
+        {
+          "prompt": "System config>",
+          "valid_commands": ["name TELDAT_AS200", "name teldat_as200"],
+          "hint": "Asigna el nombre con 'name TELDAT_AS200'.",
+          "explanation": "Define el prompt e identidad del router en la red."
+        },
+        {
+          "prompt": "System config>",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal con 'exit'.",
+          "explanation": "Regresa al nivel previo de Configuración."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["exit", "ex", "ctrl+p"],
+          "hint": "Regresa al prompt general '*' con 'exit' o Ctrl+P.",
+          "explanation": "Permite alternar entre diferentes procesos activos en Teldat CIT."
+        },
+        {
+          "prompt": "*",
+          "valid_commands": ["* p 3", "p 3", "*p 3", "proc 3"],
+          "hint": "Ingresa al Proceso 3 de Monitorización con '* p 3'.",
+          "explanation": "Proceso 3: Monitoreo operativo, diagnósticos, ping y tablas de rutas."
+        }
+      ]
+    },
+    {
+      "id": "T2",
+      "module": "Teldat RS123",
+      "title": "T2: Subinterfaz 802.1Q, IP y Persistencia Crítica",
+      "description": "Crea la subinterfaz ethernet0/0.200, asigna la IP 192.168.200.1/24, habilita dot1q 200, añade la ruta estática y aplica el ciclo obligatorio save/restart.",
+      "steps": [
+        {
+          "prompt": "*",
+          "valid_commands": ["* p 4", "p 4", "*p 4"],
+          "hint": "Entra al Proceso 4 con '* p 4'.",
+          "explanation": "Apertura del configurador CIT."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["add device eth-subinterface ethernet0/0 200"],
+          "hint": "Crea la subinterfaz con 'add device eth-subinterface ethernet0/0 200'.",
+          "explanation": "En Teldat se debe registrar explícitamente el dispositivo lógico de subinterfaz."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["network ethernet0/0.200", "net ethernet0/0.200"],
+          "hint": "Edita la subinterfaz con 'network ethernet0/0.200'.",
+          "explanation": "Selecciona el adaptador virtual para configurar sus parámetros de red."
+        },
+        {
+          "prompt": "ethernet0/0.200 config>",
+          "valid_commands": ["ip address 192.168.200.1 255.255.255.0", "ip addr 192.168.200.1 255.255.255.0"],
+          "hint": "Asigna la IP 192.168.200.1 255.255.255.0.",
+          "explanation": "Establece la IP de gateway para la subred LAN PC2."
+        },
+        {
+          "prompt": "ethernet0/0.200 config>",
+          "valid_commands": ["encapsulation dot1q 200", "encap dot1q 200"],
+          "hint": "Activa etiquetado con 'encapsulation dot1q 200'.",
+          "explanation": "Asocia la subinterfaz con la etiqueta 802.1Q VLAN 200."
+        },
+        {
+          "prompt": "ethernet0/0.200 config>",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal con 'exit'.",
+          "explanation": "Retorna al menú principal Config>."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["protocol ip", "prot ip"],
+          "hint": "Entra a enrutamiento con 'protocol ip'.",
+          "explanation": "Menú para administración de protocolos y rutas IP."
+        },
+        {
+          "prompt": "IP config>",
+          "valid_commands": ["route 192.168.100.0 255.255.255.0 10.0.12.1 1"],
+          "hint": "Agrega la ruta: route 192.168.100.0 255.255.255.0 10.0.12.1 1",
+          "explanation": "Ruta estática hacia la LAN de Cisco a través del salto 10.0.12.1."
+        },
+        {
+          "prompt": "IP config>",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal con 'exit'.",
+          "explanation": "Regresa a Config>."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["save"],
+          "hint": "Guarda en flash con 'save'.",
+          "explanation": "Persiste la configuración modificada en la memoria flash."
+        },
+        {
+          "prompt": "Config>",
+          "valid_commands": ["restart", "ctrl+p -> restart"],
+          "hint": "Ejecuta 'restart' para inyectar los cambios a la memoria activa.",
+          "explanation": "¡REGLA FUNDAMENTAL DE TELDAT!: Sin el comando restart, los cambios no se aplican en la tabla operativa de la RAM."
+        }
+      ]
+    }
+  ],
+  "datacom": [
+    {
+      "id": "D1",
+      "module": "Datacom SW1/SW2",
+      "title": "D1: Capa 2 Estricta, VLANs y Limpieza de VLAN 1",
+      "description": "Configura el hostname 'DATACOM-SW1', remueve los puertos de la VLAN 1 nativa para evitar colisiones, crea la VLAN 100 de acceso y guarda con copy run start.",
+      "steps": [
+        {
+          "prompt": "DATACOM-SW>",
+          "valid_commands": ["enable", "ena", "en"],
+          "hint": "Ingresa a modo privilegiado con 'enable'.",
+          "explanation": "Habilita la administración privilegiada en Datacom DmOS."
+        },
+        {
+          "prompt": "DATACOM-SW#",
+          "valid_commands": ["conf", "config", "configure terminal", "conf t"],
+          "hint": "Entra a configuración con 'conf'.",
+          "explanation": "Abre la sesión de configuración en DmOS."
+        },
+        {
+          "prompt": "DATACOM-SW(config)#",
+          "valid_commands": ["hostname DATACOM-SW1", "hostname datacom-sw1"],
+          "hint": "Cambia el nombre con 'hostname DATACOM-SW1'.",
+          "explanation": "Identifica al switch 1 del laboratorio de red."
+        },
+        {
+          "prompt": "DATACOM-SW1(config)#",
+          "valid_commands": ["interface vlan 1", "int vlan 1", "interface vlan1", "int vlan1"],
+          "hint": "Entra a la VLAN 1 nativa con 'interface vlan 1'.",
+          "explanation": "Permite modificar la membresía por defecto de puertos."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-vlan)#",
+          "valid_commands": ["no set-member ethernet 1/5"],
+          "hint": "Remueve el puerto 1/5 de la VLAN 1 con 'no set-member ethernet 1/5'.",
+          "explanation": "PRÁCTICA OBLIGATORIA: En DmOS debes remover el puerto de la VLAN 1 antes de reasignarlo para evitar loops y colisiones."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-vlan)#",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal con 'exit'.",
+          "explanation": "Retorna a configuración global."
+        },
+        {
+          "prompt": "DATACOM-SW1(config)#",
+          "valid_commands": ["interface vlan 100", "int vlan 100", "interface vlan100", "int vlan100"],
+          "hint": "Crea la VLAN 100 con 'interface vlan 100'.",
+          "explanation": "Define la VLAN de acceso para la estación local."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-vlan)#",
+          "valid_commands": ["set-member untagged ethernet 1/5"],
+          "hint": "Pon el puerto 1/5 en Untagged: set-member untagged ethernet 1/5",
+          "explanation": "Configura el puerto 1/5 para enviar y recibir tráfico sin etiqueta 802.1Q."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-vlan)#",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal con 'exit'.",
+          "explanation": "Retorna a configuración global."
+        },
+        {
+          "prompt": "DATACOM-SW1(config)#",
+          "valid_commands": ["interface ethernet 1/5", "int eth 1/5", "interface eth 1/5"],
+          "hint": "Entra al puerto con 'interface ethernet 1/5'.",
+          "explanation": "Configura los atributos de la interfaz física."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-if)#",
+          "valid_commands": ["switchport native vlan 100", "sw nat vl 100"],
+          "hint": "Define el PVID nativo con 'switchport native vlan 100'.",
+          "explanation": "Garantiza que cualquier trama entrante sin etiqueta se asigne a la VLAN 100."
+        },
+        {
+          "prompt": "DATACOM-SW1(config-if)#",
+          "valid_commands": ["exit", "ex"],
+          "hint": "Sal a modo privilegiado con 'exit'.",
+          "explanation": "Regresa al modo de ejecución."
+        },
+        {
+          "prompt": "DATACOM-SW1#",
+          "valid_commands": ["copy running-config startup-config", "copy run start", "wr", "write"],
+          "hint": "Guarda la configuración con 'copy running-config startup-config'.",
+          "explanation": "Sintaxis estándar de persistencia en Datacom DmOS."
+        }
+      ]
+    }
+  ],
+  "integrado": [
+    {
+      "id": "INT1",
+      "module": "Reto Integrado",
+      "title": "INT1: Maqueta Multimarca Punta a Punta",
+      "description": "Verifica que el flujo completo entre Datacom L2, Cisco L3 SVI y Teldat subinterfaz dot1q permita la conectividad extremo a extremo.",
+      "steps": [
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["ping 192.168.200.1"],
+          "hint": "Prueba conectividad hacia el Gateway de Teldat: ping 192.168.200.1",
+          "explanation": "Prueba ICMP bidireccional a través del enlace WAN y las rutas estáticas configuradas."
+        },
+        {
+          "prompt": "CISCO_AS100#",
+          "valid_commands": ["show ip route static", "sh ip ro stat", "sh ip route stat", "sh ip ro"],
+          "hint": "Audita la tabla de enrutamiento con 'show ip route static'.",
+          "explanation": "Valida que la entrada hacia 192.168.200.0/24 esté activa en la RIB de Cisco IOS."
+        }
+      ]
+    }
+  ]
+}
