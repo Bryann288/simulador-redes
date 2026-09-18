@@ -4,7 +4,7 @@ import path from 'path';
 
 (async () => {
   console.log('====================================================');
-  console.log('🎬 Iniciando grabación de video demo en alta definición...');
+  console.log('🎬 Iniciando grabación dinámica con cursor virtual y navegación...');
   console.log('====================================================\n');
 
   const outputDir = path.resolve('./videos');
@@ -12,11 +12,10 @@ import path from 'path';
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  // Iniciar Chromium (headless por variable de entorno o visible por defecto)
   const isHeadless = process.env.HEADLESS === 'true';
   const browser = await chromium.launch({
     headless: isHeadless,
-    slowMo: 40
+    slowMo: 25
   });
 
   const context = await browser.newContext({
@@ -28,87 +27,176 @@ import path from 'path';
   });
 
   const page = await context.newPage();
-
-  // URL del simulador local (Vite)
   const URL = 'http://localhost:5173';
-  console.log(`🌐 Navegando a: ${URL}`);
+  console.log(`🌐 Cargando plataforma: ${URL}`);
 
-  try {
-    await page.goto(URL, { waitUntil: 'networkidle', timeout: 15000 });
-  } catch {
-    console.log('⚠️ Esperando carga inicial de la página...');
-    await page.goto(URL);
-  }
+  await page.goto(URL, { waitUntil: 'networkidle', timeout: 15000 }).catch(() => page.goto(URL));
 
-  // 1. Pausa de introducción: muestra la interfaz limpia y el diagrama de topología
-  console.log('📸 1. Escena inicial: Interfaz y topología...');
-  await page.waitForTimeout(2000);
+  // Inyectar cursor virtual de alta visibilidad con onda expansiva de clic
+  await page.evaluate(() => {
+    const cursor = document.createElement('div');
+    cursor.id = 'virtual-mouse-pointer';
+    cursor.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(14, 165, 233, 0.45);
+      border: 2px solid rgba(255, 255, 255, 0.95);
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.95), 0 2px 8px rgba(0,0,0,0.6);
+      pointer-events: none;
+      z-index: 9999999;
+      transform: translate(-50%, -50%);
+      transition: transform 0.12s ease, background 0.12s ease;
+    `;
+    document.body.appendChild(cursor);
 
-  // Localizador del input de la terminal
-  const terminalInput = page.locator('input[type="text"]').first();
-  await terminalInput.waitFor({ state: 'visible', timeout: 5000 });
-  await terminalInput.click();
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @keyframes ripple-wave {
+        0% { transform: translate(-50%, -50%) scale(0.6); opacity: 1; border-color: #38bdf8; }
+        100% { transform: translate(-50%, -50%) scale(3.5); opacity: 0; border-color: #0284c7; }
+      }
+      .click-ripple {
+        position: fixed;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #38bdf8;
+        background: rgba(56, 189, 248, 0.25);
+        pointer-events: none;
+        z-index: 9999998;
+        animation: ripple-wave 0.45s ease-out forwards;
+      }
+    `;
+    document.head.appendChild(style);
 
-  // Función auxiliar para teclear con cadencia humana
-  const typeCommand = async (cmd, delayMs = 65) => {
-    console.log(`⌨️  Tecleando: "${cmd}"`);
-    await terminalInput.fill('');
-    await terminalInput.pressSequentially(cmd, { delay: delayMs });
-    await page.waitForTimeout(400);
-    await page.keyboard.press('Enter');
+    window.triggerRipple = (x, y) => {
+      const ripple = document.createElement('div');
+      ripple.className = 'click-ripple';
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      document.body.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 500);
+    };
+
+    window.addEventListener('mousemove', (e) => {
+      cursor.style.left = e.clientX + 'px';
+      cursor.style.top = e.clientY + 'px';
+    });
+
+    window.addEventListener('mousedown', () => {
+      cursor.style.transform = 'translate(-50%, -50%) scale(0.75)';
+      cursor.style.background = 'rgba(56, 189, 248, 0.85)';
+    });
+
+    window.addEventListener('mouseup', () => {
+      cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+      cursor.style.background = 'rgba(14, 165, 233, 0.45)';
+    });
+  });
+
+  // Funciones de navegación suave con mouse
+  const moveMouseTo = async (locator, steps = 15) => {
+    const box = await locator.boundingBox();
+    if (!box) return null;
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y, { steps });
+    return { x, y };
   };
 
-  // 2. Comando erróneo para lucir el nuevo diagnóstico contextual realista de Cisco
-  console.log('\n🔍 2. Demostrando diagnóstico de error realista...');
-  await typeCommand('ping 8.8.8.8');
-  await page.waitForTimeout(2500); // Pausa para leer el puntero '^' y diagnóstico
+  const clickWithMouse = async (locator, delayAfter = 400) => {
+    const coords = await moveMouseTo(locator);
+    if (!coords) return;
+    await page.waitForTimeout(100);
+    await page.evaluate(({ x, y }) => window.triggerRipple(x, y), coords);
+    await locator.click();
+    await page.waitForTimeout(delayAfter);
+  };
 
-  // 3. Flujo guiado de Cisco 860VAE (Reto C1 con contraseña, encriptación y banner)
-  console.log('\n🚀 3. Ejecutando configuración de Cisco IOS con mejores prácticas...');
-  await typeCommand('enable');
+  // 1. Escena inicial (1.5s) - Muestra título y topología
+  console.log('📌 1. Explorando barra superior y topología...');
+  await page.mouse.move(300, 30, { steps: 10 });
   await page.waitForTimeout(1000);
 
-  await typeCommand('conf t');
-  await page.waitForTimeout(1000);
+  // 2. Abrir Modal de Parámetros de Red / Examen
+  console.log('🖱️ 2. Abriendo modal de direccionamiento y segmentación de red...');
+  const examBtn = page.locator('button:has-text("Parámetros de Red")').first();
+  await clickWithMouse(examBtn, 800);
 
-  await typeCommand('hostname CISCO_AS100');
-  await page.waitForTimeout(1000);
-
-  await typeCommand('enable secret cisco123');
-  await page.waitForTimeout(1000);
-
-  // Nuevo comando: encriptación global de claves
-  await typeCommand('service password-encryption');
-  await page.waitForTimeout(1200);
-
-  // Banner MOTD de seguridad perimetral
-  await typeCommand('banner motd #ACCESO RESTRINGIDO - PERSONAL AUTORIZADO#');
-  await page.waitForTimeout(1200);
-
-  // Nuevo comando de salida limpia: end
-  await typeCommand('end');
-  await page.waitForTimeout(1000);
-
-  // Guardado permanente en NVRAM
-  await typeCommand('write memory');
-  await page.waitForTimeout(3000); // Pausa para apreciar la tarjeta de reto completado
-
-  // 4. Conmutar a módulo Datacom DmOS
-  console.log('\n🔄 4. Cambiando a módulo de Switch Datacom DmOS...');
-  const datacomTab = page.locator('button:has-text("Datacom DmOS")').first();
-  if (await datacomTab.isVisible()) {
-    await datacomTab.click();
-    await page.waitForTimeout(2000);
-
-    await terminalInput.click();
-    await typeCommand('enable');
-    await page.waitForTimeout(1000);
-    await typeCommand('config');
-    await page.waitForTimeout(2500);
+  // Seleccionar preset o explorar VLAN
+  console.log('🔍 3. Inspeccionando perfiles de red...');
+  const presetCard = page.locator('button:has-text("Examen B:")').first();
+  if (await presetCard.isVisible()) {
+    await clickWithMouse(presetCard, 600);
   }
 
-  // 5. Cierre y guardado del video
-  console.log('\n💾 5. Finalizando grabación y empaquetando video...');
+  // Cerrar/Aplicar modal
+  const applyBtn = page.locator('button:has-text("Aplicar Parámetros de Red")').first();
+  await clickWithMouse(applyBtn, 800);
+
+  // 3. Interactuar directamente con el Diagrama de Topología
+  console.log('🗺️ 4. Navegando mediante clics en nodos de la topología...');
+  const teldatNode = page.locator('text="TELDAT-RS123"').first();
+  if (await teldatNode.isVisible()) {
+    await clickWithMouse(teldatNode, 900);
+  }
+
+  const ciscoNode = page.locator('text="CISCO-860VAE"').first();
+  if (await ciscoNode.isVisible()) {
+    await clickWithMouse(ciscoNode, 900);
+  }
+
+  // 4. Escribir comandos en terminal con ritmo ágil
+  console.log('⌨️ 5. Ejecutando comandos guiados en terminal...');
+  const terminalInput = page.locator('input[type="text"]').first();
+  await clickWithMouse(terminalInput, 200);
+
+  const quickType = async (cmd, delay = 35) => {
+    const activeInput = page.locator('input[type="text"]').first();
+    await activeInput.fill('');
+    await activeInput.pressSequentially(cmd, { delay });
+    await page.waitForTimeout(150);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(400);
+  };
+
+  await quickType('enable');
+  await quickType('conf t');
+  await quickType('hostname CISCO_AS100');
+  await quickType('enable secret cisco123');
+  await quickType('service password-encryption');
+  await quickType('banner motd #ACCESO RESTRINGIDO#');
+  await quickType('do write memory'); // Demuestra guardado rápido desde config
+  await page.waitForTimeout(1500); // Apreciar tarjeta de éxito verde
+
+  // 5. Conmutar a Modo Libre & Auditoría (Sandbox)
+  console.log('⚡ 6. Conmutando a Modo Libre (Sandbox) y Auditoría Técnica...');
+  const sandboxTab = page.locator('button:has-text("Consola Libre & Auditoría")').first();
+  await clickWithMouse(sandboxTab, 1000);
+
+  // Escribir en Sandbox
+  const sandboxInput = page.locator('input[type="text"]').first();
+  await clickWithMouse(sandboxInput, 200);
+
+  await quickType('configure terminal');
+  await quickType('service password-encryption');
+  await quickType('interface FastEthernet 0');
+  await quickType('ip address 192.168.1.1 255.255.255.0');
+  await quickType('no shutdown');
+  await quickType('end');
+  await quickType('write memory');
+
+  // 6. Hacer clic en "Auditar Configuración"
+  console.log('📊 7. Ejecutando auditoría técnica en vivo con mouse...');
+  const auditBtn = page.locator('button:has-text("Auditar Configuración")').first();
+  await clickWithMouse(auditBtn, 2000); // Pausa para ver la puntuación e índice de cumplimiento
+
+  // 7. Finalización y guardado
+  console.log('💾 8. Empaquetando video...');
   const video = page.video();
   await context.close();
   await browser.close();
@@ -116,17 +204,15 @@ import path from 'path';
   if (video) {
     const videoPath = await video.path();
     const finalDest = path.join(outputDir, 'demo-simulador-redes.webm');
-    
-    // Copiar a nombre representativo
     try {
       fs.copyFileSync(videoPath, finalDest);
-      console.log('====================================================');
-      console.log(`🎉 ¡GRABACIÓN COMPLETADA CON ÉXITO!`);
-      console.log(`📁 Video listo en: ${finalDest}`);
-      console.log('   (Formato .webm de alta definición 1280x720, ideal para LinkedIn y portafolio)');
-      console.log('====================================================');
+      console.log('\n====================================================');
+      console.log('🎉 ¡NUEVO VIDEO DINÁMICO GRABADO CON ÉXITO!');
+      console.log(`📁 Archivo generado: ${finalDest}`);
+      console.log('   (Incluye cursor virtual, interacción con topología, modal de red y auditoría)');
+      console.log('====================================================\n');
     } catch {
-      console.log(`🎉 ¡Video guardado en: ${videoPath}!`);
+      console.log(`Video guardado en: ${videoPath}`);
     }
   }
 })();
